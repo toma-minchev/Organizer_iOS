@@ -14,12 +14,19 @@ struct EventsView: View {
     
     @State private var showingAddEvent = false
     @State private var showActionButtons = false
+    @State private var selectedDate = Date()
+    
+    private var filteredEvents: [Event] {
+        events.filter { event in
+            Calendar.current.isDate(event.dueDate, inSameDayAs: selectedDate)
+        }
+    }
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .topLeading) {
                 List {
-                    ForEach(events) { event in
+                    ForEach(filteredEvents) { event in
                         NavigationLink {
                             EditEventView(event: event)
                         } label: {
@@ -127,16 +134,24 @@ struct EventsView: View {
                             label: { Label("Add Event", systemImage: "plus") }
                         }
                     }
+                }.overlay {
+                    if filteredEvents.isEmpty {
+                        ContentUnavailableView(
+                            "No Events",
+                            systemImage: "calendar",
+                            description: Text("There are no events for this date.")
+                        )
+                    }
                 }
                 .sheet(isPresented: $showingAddEvent) {
                     AddEventView()
                 }
                 .contentMargins(.top, 50)
                 .task {
-                        seedIfNeeded()
+                    seedIfNeeded()
                 }
 
-                DatePicker("", selection: .constant(Date()), displayedComponents: .date)
+                DatePicker("", selection: $selectedDate, displayedComponents: .date)
                     .background(
                         RoundedRectangle(cornerRadius: 0)
                         .fill(Color(.systemBackground))
@@ -153,24 +168,28 @@ struct EventsView: View {
     
     private func seedIfNeeded() {
         if events.isEmpty {
-            let e1 = Event(
-                name: "Workout",
-                details: "Gym session",
-                dueDate: Date(),
-                isCompleted: false,
-                recurrence: 0
-            )
+            let calendar = Calendar.current
+            let today = Date()
             
-            let e2 = Event(
-                name: "Team Meeting",
-                details: "Weekly sync",
-                dueDate: Date(),
-                isCompleted: true,
-                recurrence: 0
-            )
+            let dates = [
+                calendar.date(byAdding: .day, value: -1, to: today)!,
+                today,
+                calendar.date(byAdding: .day, value: 1, to: today)!
+            ]
             
-            modelContext.insert(e1)
-            modelContext.insert(e2)
+            for date in dates {
+                for _ in 0..<4 {
+                    let event = Event(
+                        name: "Sample Event",
+                        details: "Seeded event",
+                        dueDate: date,
+                        isCompleted: false,
+                        recurrence: 0
+                    )
+                    
+                    modelContext.insert(event)
+                }
+            }
             
             try? modelContext.save()
         }

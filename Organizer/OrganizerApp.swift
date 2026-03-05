@@ -15,7 +15,7 @@ struct OrganizerApp: App {
             Event.self,
             Routine.self
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])

@@ -18,7 +18,7 @@ final class Routine {
     var completions: [Date: Bool] = [:]
     var recurrences: [Int] = []
     
-    init(name: String, details: String, dueHour: Int, dueMinute: Int, completions: [Date: Bool], recurrence: [Int]) {
+    init(name: String, details: String, dueHour: Int, dueMinute: Int, completions: [Date: Bool], recurrences: [Int]) {
         self.name = name
         self.details = details
         self.dueHour = dueHour
