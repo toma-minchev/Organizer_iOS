@@ -9,24 +9,51 @@ import SwiftUI
 import SwiftData
 
 
-enum Weekday: String, CaseIterable, Identifiable {
-    var id: Self { self }
-    case monday, tuesday, wednesday, thursday, friday, saturday, sunday
-    var shortLetter: String {rawValue.first.map { String($0).uppercased() } ?? ""}
-    var index: Int { Self.allCases.firstIndex(of: self)! + 1 }
+enum Weekday: Int, CaseIterable, Identifiable {
+    case sunday = 1
+    case monday
+    case tuesday
+    case wednesday
+    case thursday
+    case friday
+    case saturday
+
+    var id: Int { rawValue }
+
+    var shortLetter: String {
+        String(String(describing: self).prefix(1)).uppercased()
+    }
 }
 
 struct RoutineView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var routines: [Routine]
+    @Query(sort: [SortDescriptor(\Routine.dueHour), SortDescriptor(\Routine.dueMinute)])
+    private var routines: [Routine]
+    
+    @AppStorage("lastWeekNumber") private var lastWeekNumber: Int = 0
+    private var currentWeekNumber: Int {
+        var calendar = Calendar.current
+        calendar.firstWeekday = Calendar.current.firstWeekday // or a user-selected value
+        return calendar.component(.weekOfYear, from: Date())
+    }
     
     @State private var showingAddRoutine = false
     @State private var showActionButtons = false
-    @State private var selectedDay: Weekday = .monday
+    @State private var selectedDay: Weekday = {
+        let weekday = Calendar.current.component(.weekday, from: Date())
+        return Weekday(rawValue: weekday)!
+    }()
 
-    private var filteredRoutines: [Routine] {
-        let dayIndex = selectedDay.index
-        return routines.filter { $0.recurrences.contains(dayIndex) }
+    var filteredRoutines: [Routine] {
+        routines.filter { $0.recurrences.contains(selectedDay.rawValue) }
+    }
+    
+    private var orderedWeekdays: [Weekday] {
+        let first = Calendar.current.firstWeekday
+        guard let index = Weekday.allCases.firstIndex(where: { $0.rawValue == first }) else {
+            return Weekday.allCases
+        }
+        return Array(Weekday.allCases[index...] + Weekday.allCases[..<index])
     }
 
     var body: some View {
@@ -34,89 +61,22 @@ struct RoutineView: View {
             ZStack(alignment: .top) {
                 List {
                     ForEach(filteredRoutines) { routine in
-                        NavigationLink {
-                            EditRoutineView(/*routine: routine*/)
-                        } label: {
-                            HStack {
-//                                if showActionButtons {
-//                                    Button {
-//                                        routine.isCompleted.toggle()
-//                                    } label: {
-//                                        Image(systemName: event.isCompleted ? "checkmark.circle.fill" : "circle")
-//                                            .font(.system(size: 22))
-//                                    }
-//                                    .foregroundColor(event.isCompleted ? .green : .secondary)
-//                                    .buttonStyle(.borderless)
-//                                    .transition(.move(edge: .leading).combined(with: .opacity))
-//                                }
-                                
-                                VStack(alignment: .leading, spacing: 4) {
-//                                    Text(
-//                                        event.dueDate,
-//                                        format: Calendar.current.isDateInToday(event.dueDate)
-//                                            ? .dateTime.hour().minute()
-//                                            : .dateTime.day().month().year().hour().minute()
-//                                    )
-//                                    .font(.subheadline)
-//                                    .foregroundStyle(.secondary)
-                                    
-                                    Text(routine.name)
-                                        .lineLimit(1)
-                                        .bold()
-//                                        .foregroundColor(event.isCompleted ? .secondary : .primary)
-//                                        .strikethrough(event.isCompleted)
-                                    
-//                                    if !event.isCompleted && !event.details.isEmpty {
-//                                        Text(event.details)
-//                                        .font(.subheadline)
-//                                        .foregroundStyle(.secondary)
-//                                    }
-                                }
-
-//                                Spacer()
-//
-//                                if showActionButtons {
-//                                    Button(role: .destructive) {
-//                                        modelContext.delete(event)
-//                                    } label: {
-//                                        Image(systemName: "trash")
-//                                            .font(.system(size: 22))
-//                                    }
-//                                    .foregroundColor(.red)
-//                                    .buttonStyle(.borderless)
-//                                    .transition(.move(edge: .trailing).combined(with: .opacity))
-//                                }
-                            }
-                        }
-                        .onDisappear {
-                            showActionButtons = false
-                        }
-//                        .swipeActions(edge: .trailing) {
-//                            Button {
-//                                withAnimation {
-//                                    event.isCompleted.toggle()
-//                                }
-//                            } label: {
-//                                Label(event.isCompleted ? "Undo" : "Done", systemImage: "checkmark")
-//                            }
-//                            .tint(event.isCompleted ? .secondary : .blue)
-//                        
-//                        
-//                            Button(role: .destructive) {
-//                                modelContext.delete(event)
-//                            } label: {
-//                                Label("Delete", systemImage: "trash")
-//                            }
-//                        }
+                        RoutineRowView(
+                            routine: routine,
+                            selectedDay: selectedDay,
+                            showActionButtons: showActionButtons,
+                            orderedWeekdays: orderedWeekdays
+                        )
                     }
                 }
                 .contentMargins(.top, 50)
                 .task {
+                    resetRoutinesIfNewWeek()
                     seedIfNeeded()
                 }
                 
                 Picker("Day", selection: $selectedDay) {
-                    ForEach(Weekday.allCases) { day in
+                    ForEach(orderedWeekdays) { day in
                         Text(day.shortLetter).tag(day)
                     }
                 }
@@ -134,15 +94,12 @@ struct RoutineView: View {
             .navigationTitle("Routine")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     if !showActionButtons && filteredRoutines.count > 0 {
-                        Button {
+                        Button("Edit") {
                             withAnimation {
                                 showActionButtons = true
                             }
-                        }
-                        label: {
-                            Label("Edit", systemImage: "pencil")
                         }
                     } else if filteredRoutines.count > 0 {
                         Button(role: .confirm) {
@@ -155,8 +112,8 @@ struct RoutineView: View {
                         }
                     }
                 }
-
-                ToolbarItem(placement: .navigationBarLeading) {
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
                     if !showActionButtons {
                         Button { showingAddRoutine = true }
                         label: { Label("Add Event", systemImage: "plus") }
@@ -173,23 +130,40 @@ struct RoutineView: View {
                 }
             }
             .sheet(isPresented: $showingAddRoutine) {
-                AddRoutineView()
+                AddRoutineView(orderedWeekdays: orderedWeekdays)
             }
         }
     }
     
+    private func resetRoutinesIfNewWeek() {
+        var calendar = Calendar.current
+        calendar.firstWeekday = Calendar.current.firstWeekday
+        
+        let currentWeek = calendar.component(.weekOfYear, from: Date())
+        
+        guard currentWeek != lastWeekNumber else { return }
+        
+        for routine in routines {
+            routine.completions = []
+        }
+        
+        try? modelContext.save()
+        
+        lastWeekNumber = currentWeek
+    }
+    
     private func seedIfNeeded() {
         if routines.isEmpty {
-            let workDays: [Int] = [1, 2, 3, 4, 5]
+            let days: [Int] = [2, 3, 4, 5, 6]
             
-            for day in workDays {
+            for day in days {
                 for i in 0..<2 {
                     let routine = Routine(
                         name: "Sample Routine",
                         details: "Seeded routine",
                         dueHour: 9 + i,
                         dueMinute: 0,
-                        completions: [:],
+                        completions: [],
                         recurrences: [day]
                     )
                     
