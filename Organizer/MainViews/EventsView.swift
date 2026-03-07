@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 
+
 struct EventsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var events: [Event]
@@ -21,7 +22,16 @@ struct EventsView: View {
             Calendar.current.isDate(event.dueDate, inSameDayAs: selectedDate)
         }
     }
+    
+    private func deleteEvents(offsets: IndexSet) {
+        withAnimation {
+            for index in offsets {
+                modelContext.delete(events[index])
+            }
+        }
+    }
 
+    
     var body: some View {
         NavigationStack {
             ZStack(alignment: .topLeading) {
@@ -114,7 +124,8 @@ struct EventsView: View {
                         details: "Seeded event",
                         dueDate: date,
                         isCompleted: false,
-                        recurrence: 0
+                        recurrenceValue: 1,
+                        recurrenceUnit: .day
                     )
                     
                     modelContext.insert(event)
@@ -122,14 +133,6 @@ struct EventsView: View {
             }
             
             try? modelContext.save()
-        }
-    }
-
-    private func deleteEvents(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(events[index])
-            }
         }
     }
 }

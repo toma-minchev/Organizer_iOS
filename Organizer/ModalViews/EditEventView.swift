@@ -8,11 +8,13 @@
 import SwiftUI
 import SwiftData
 
+
 struct EditEventView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     
     @Bindable var event: Event
+    
     
     var body: some View {
         NavigationStack {
@@ -35,27 +37,50 @@ struct EditEventView: View {
                         .frame(maxHeight: 300)
                 }
                 DatePicker("Due Date", selection: $event.dueDate)
-                Picker("Repeat", selection: $event.recurrence) {
-                    Text("None").tag(0)
-                    
-                    Text("1 hour").tag(1)
-                    Text("2 hours").tag(2)
-                    Text("3 hours").tag(3)
-                    Text("6 hours").tag(6)
-                    Text("12 hours").tag(12)
-                    
-                    Text("1 day").tag(24)
-                    Text("2 days").tag(48)
-                    Text("3 days").tag(72)
-                    
-                    Text("1 week").tag(168)
-                    Text("2 weeks").tag(336)
-                    Text("3 weeks").tag(504)
-                    
-                    Text("1 month").tag(720)
-                }
                 Toggle("Completed", isOn: $event.isCompleted)
+                
+                Section("Repeat") {
+                    Toggle("Repeat", isOn: Binding(
+                        get: { event.recurrenceValue > 0 },
+                        set: { event.recurrenceValue = $0 ? 1 : 0 }
+                    ))
+
+                    if event.recurrenceValue > 0 {
+                        HStack {
+                            Text("Every")
+                            Spacer()
+                            Menu {
+                                ForEach(Event.recurrenceRange(for: event.recurrenceUnit), id: \.self) { value in
+                                    Button("\(value)") { event.recurrenceValue = value }
+                                }
+                            } label: {
+                                Text("\(event.recurrenceValue)")
+                                    .frame(minWidth: 20)
+                                    .foregroundColor(.primary)
+                                    .padding(.horizontal, 13)
+                                    .padding(.vertical, 8)
+                                    .background(Capsule().fill(Color(.secondarySystemFill)))
+                            }
+
+                            Menu {
+                                ForEach(RecurrenceUnit.allCases, id: \.self) { unit in
+                                    Button(Event.unitText(text: unit.rawValue, value: event.recurrenceValue)) { event.recurrenceUnit = unit }
+                                }
+                            } label: {
+                                Text(Event.unitText(text: event.recurrenceUnit.rawValue, value: event.recurrenceValue))
+                                    .foregroundColor(.primary)
+                                    .padding(.horizontal, 13)
+                                    .padding(.vertical, 8)
+                                    .background(Capsule().fill(Color(.secondarySystemFill)))
+                            }
+                            .onChange(of: event.recurrenceUnit) {
+                                event.recurrenceValue = min(event.recurrenceValue, Event.recurrenceRange(for: event.recurrenceUnit).upperBound)
+                            }
+                        }
+                    }
+                }
             }
+            .animation(.easeInOut(duration: 0.2), value: event.recurrenceValue > 0)
             .navigationTitle("Edit Event")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 
+
 @main
 struct OrganizerApp: App {
     var sharedModelContainer: ModelContainer = {
@@ -24,6 +25,7 @@ struct OrganizerApp: App {
         }
     }()
 
+    
     var body: some Scene {
         WindowGroup {
             MainTabView()

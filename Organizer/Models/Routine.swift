@@ -27,3 +27,27 @@ final class Routine {
         self.recurrences = recurrences
     }
 }
+
+
+extension Routine {
+    var recurrenceDescription: String {
+        let sorted = recurrences.sorted()
+        
+        if sorted == [1,2,3,4,5,6,7] {
+            return "Everyday"
+        }
+        
+        if sorted == [2,3,4,5,6] {
+            return "Workdays"
+        }
+        
+        if sorted == [1,7] {
+            return "Weekends"
+        }
+        
+        let symbols = Calendar.current.shortWeekdaySymbols
+        return sorted
+            .map { symbols[$0 - 1].prefix(3) }
+            .joined(separator: " ")
+    }
+}

@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 
+
 struct AddEventView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -15,7 +16,23 @@ struct AddEventView: View {
     @State private var name = ""
     @State private var details = ""
     @State private var dueDate = Date()
-    @State private var recurrence: Int = 0
+    @State private var recurrenceValue: Int = 0
+    @State private var recurrenceUnit: RecurrenceUnit = .day
+    
+    private func saveEvent() {
+        let newEvent = Event(
+            name: name,
+            details: details,
+            dueDate: dueDate,
+            isCompleted: false,
+            recurrenceValue: recurrenceValue,
+            recurrenceUnit: recurrenceValue == 0 ? .day : recurrenceUnit
+        )
+
+        modelContext.insert(newEvent)
+        try? modelContext.save()
+    }
+    
     
     var body: some View {
         NavigationStack {
@@ -38,26 +55,48 @@ struct AddEventView: View {
                         .frame(maxHeight: 300)
                 }
                 DatePicker(.init("Due Date"), selection: Binding<Date>(get: { self.dueDate }, set: { self.dueDate = $0 }))
-                Picker("Repeat", selection: $recurrence) {
-                    Text("None").tag(0)
-                    
-                    Text("1 hour").tag(1)
-                    Text("2 hours").tag(2)
-                    Text("3 hours").tag(3)
-                    Text("6 hours").tag(6)
-                    Text("12 hours").tag(12)
-                    
-                    Text("1 day").tag(24)
-                    Text("2 days").tag(48)
-                    Text("3 days").tag(72)
-                    
-                    Text("1 week").tag(168)
-                    Text("2 weeks").tag(336)
-                    Text("3 weeks").tag(504)
-                    
-                    Text("1 month").tag(720)
+                Section("Repeat") {
+                    Toggle("Repeat", isOn: Binding(
+                        get: { recurrenceValue > 0 },
+                        set: { recurrenceValue = $0 ? 1 : 0 }
+                    ))
+
+                    if recurrenceValue > 0 {
+                        HStack {
+                            Text("Every")
+                            Spacer()
+                            Menu {
+                                ForEach(Event.recurrenceRange(for: recurrenceUnit), id: \.self) { value in
+                                    Button("\(value)") { recurrenceValue = value }
+                                }
+                            } label: {
+                                Text("\(recurrenceValue)")
+                                    .frame(minWidth: 20)
+                                    .foregroundColor(.primary)
+                                    .padding(.horizontal, 13)
+                                    .padding(.vertical, 8)
+                                    .background(Capsule().fill(Color(.secondarySystemFill)))
+                            }
+
+                            Menu {
+                                ForEach(RecurrenceUnit.allCases, id: \.self) { unit in
+                                    Button(Event.unitText(text: unit.rawValue, value: recurrenceValue)) { recurrenceUnit = unit }
+                                }
+                            } label: {
+                                Text(Event.unitText(text: recurrenceUnit.rawValue, value: recurrenceValue))
+                                    .foregroundColor(.primary)
+                                    .padding(.horizontal, 13)
+                                    .padding(.vertical, 8)
+                                    .background(Capsule().fill(Color(.secondarySystemFill)))
+                            }
+                            .onChange(of: recurrenceUnit) {
+                                recurrenceValue = min(recurrenceValue, Event.recurrenceRange(for: recurrenceUnit).upperBound)
+                            }
+                        }
+                    }
                 }
             }
+            .animation(.easeInOut(duration: 0.2), value: recurrenceValue > 0)
             .navigationTitle("New Event")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -79,18 +118,5 @@ struct AddEventView: View {
                 }
             }
         }
-    }
-    
-    private func saveEvent() {
-        let newEvent = Event(
-            name: name,
-            details: details,
-            dueDate: dueDate,
-            isCompleted: false,
-            recurrence: recurrence
-        )
-
-        modelContext.insert(newEvent)
-        try? modelContext.save()
     }
 }

@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 
+
 struct EditRoutineView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -30,6 +31,15 @@ struct EditRoutineView: View {
             }
         )
     }
+    
+    private func toggleDay(_ day: Int) {
+        if routine.recurrences.contains(day) {
+            routine.recurrences.removeAll { $0 == day }
+        } else {
+            routine.recurrences.append(day)
+        }
+    }
+    
     
     var body: some View {
         NavigationStack {
@@ -104,14 +114,6 @@ struct EditRoutineView: View {
                     }
                 }
             }
-        }
-    }
-    
-    private func toggleDay(_ day: Int) {
-        if routine.recurrences.contains(day) {
-            routine.recurrences.removeAll { $0 == day }
-        } else {
-            routine.recurrences.append(day)
         }
     }
 }

@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 
+
 struct AddRoutineView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -19,6 +20,29 @@ struct AddRoutineView: View {
     @State private var selectedDays: Set<Int> = []
     
     let orderedWeekdays: [Weekday]
+    
+    private func toggleDay(_ day: Int) {
+        if selectedDays.contains(day) {
+            selectedDays.remove(day)
+        } else {
+            selectedDays.insert(day)
+        }
+    }
+    
+    private func saveRoutine() {
+        let newRoutine = Routine(
+            name: name,
+            details: details,
+            dueHour: dueHour,
+            dueMinute: dueMinute,
+            completions: [],
+            recurrences: Array(selectedDays).sorted()
+        )
+        
+        modelContext.insert(newRoutine)
+        try? modelContext.save()
+    }
+    
     
     var body: some View {
         NavigationStack {
@@ -105,28 +129,6 @@ struct AddRoutineView: View {
                 }
             }
         }
-    }
-    
-    private func toggleDay(_ day: Int) {
-        if selectedDays.contains(day) {
-            selectedDays.remove(day)
-        } else {
-            selectedDays.insert(day)
-        }
-    }
-    
-    private func saveRoutine() {
-        let newRoutine = Routine(
-            name: name,
-            details: details,
-            dueHour: dueHour,
-            dueMinute: dueMinute,
-            completions: [],
-            recurrences: Array(selectedDays).sorted()
-        )
-        
-        modelContext.insert(newRoutine)
-        try? modelContext.save()
     }
 }
 

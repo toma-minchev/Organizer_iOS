@@ -55,7 +55,25 @@ struct RoutineView: View {
         }
         return Array(Weekday.allCases[index...] + Weekday.allCases[..<index])
     }
+    
+    private func resetRoutinesIfNewWeek() {
+        var calendar = Calendar.current
+        calendar.firstWeekday = Calendar.current.firstWeekday
+        
+        let currentWeek = calendar.component(.weekOfYear, from: Date())
+        
+        guard currentWeek != lastWeekNumber else { return }
+        
+        for routine in routines {
+            routine.completions = []
+        }
+        
+        try? modelContext.save()
+        
+        lastWeekNumber = currentWeek
+    }
 
+    
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
@@ -133,23 +151,6 @@ struct RoutineView: View {
                 AddRoutineView(orderedWeekdays: orderedWeekdays)
             }
         }
-    }
-    
-    private func resetRoutinesIfNewWeek() {
-        var calendar = Calendar.current
-        calendar.firstWeekday = Calendar.current.firstWeekday
-        
-        let currentWeek = calendar.component(.weekOfYear, from: Date())
-        
-        guard currentWeek != lastWeekNumber else { return }
-        
-        for routine in routines {
-            routine.completions = []
-        }
-        
-        try? modelContext.save()
-        
-        lastWeekNumber = currentWeek
     }
     
     private func seedIfNeeded() {

@@ -20,6 +20,7 @@ struct RoutineRowView: View {
         routine.completions.contains(selectedDay.id)
     }
     
+    
     var body: some View {
         NavigationLink {
             EditRoutineView(routine: routine, orderedWeekdays: orderedWeekdays, selectedDay: selectedDay)
@@ -42,7 +43,7 @@ struct RoutineRowView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(String(format: "%02d:%02d", routine.dueHour, routine.dueMinute)) • \(recurrenceText(for: routine.recurrences))")
+                    Text("\(String(format: "%02d:%02d", routine.dueHour, routine.dueMinute)) • \(routine.recurrenceDescription)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     
@@ -92,26 +93,5 @@ struct RoutineRowView: View {
                 Label("Delete", systemImage: "trash")
             }
         }
-    }
-    
-    private func recurrenceText(for days: [Int]) -> String {
-        let sorted = days.sorted()
-        
-        if sorted == [1,2,3,4,5,6,7] {
-            return "Everyday"
-        }
-        
-        if sorted == [2,3,4,5,6] {
-            return "Workdays"
-        }
-        
-        if sorted == [1,7] {
-            return "Weekends"
-        }
-        
-        let symbols = Calendar.current.shortWeekdaySymbols
-        return sorted
-            .map { symbols[$0 - 1].prefix(3) }
-            .joined(separator: " ")
     }
 }
