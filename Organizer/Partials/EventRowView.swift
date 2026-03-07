@@ -14,25 +14,6 @@ struct EventRowView: View {
     let event: Event
     let showActionButtons: Bool
     
-    private func recurrenceText(for hours: Int) -> String {
-        switch hours {
-        case 0: return "No repeat"
-        case 1: return "Every hour"
-        case 2: return "Every 2 hours"
-        case 3: return "Every 3 hours"
-        case 6: return "Every 6 hours"
-        case 12: return "Every 12 hours"
-        case 24: return "Every day"
-        case 48: return "Every 2 days"
-        case 72: return "Every 3 days"
-        case 168: return "Every week"
-        case 336: return "Every 2 weeks"
-        case 504: return "Every 3 weeks"
-        case 720: return "Every month"
-        default: return "Custom"
-        }
-    }
-    
     
     var body: some View {
         NavigationLink {
