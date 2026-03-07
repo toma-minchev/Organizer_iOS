@@ -63,6 +63,7 @@ struct EventRowView: View {
                     .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
+            .animation(.easeInOut(duration: 0.2), value: showActionButtons)
         }
         .swipeActions(edge: .trailing) {
             Button {

@@ -73,11 +73,11 @@ extension Event {
     
     static func recurrenceRange(for unit: RecurrenceUnit) -> ClosedRange<Int> {
         switch unit {
-            case .hour: return 1...24
-            case .day: return 1...365
-            case .week: return 1...52
-            case .month: return 1...12
-            case .year: return 1...100
+            case .hour: return 1...23
+            case .day: return 1...6
+            case .week: return 1...3
+            case .month: return 1...11
+            case .year: return 1...10
         }
     }
     
