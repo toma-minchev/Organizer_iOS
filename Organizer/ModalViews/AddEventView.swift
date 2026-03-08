@@ -24,6 +24,7 @@ struct AddEventView: View {
             name: name,
             details: details,
             dueDate: dueDate,
+            creationDate: Date(),
             isCompleted: false,
             recurrenceValue: recurrenceValue,
             recurrenceUnit: recurrenceValue == 0 ? .day : recurrenceUnit

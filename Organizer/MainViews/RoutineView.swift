@@ -145,25 +145,28 @@ struct RoutineView: View {
     }
     
     private func seedIfNeeded() {
-        if routines.isEmpty {
-            let days: [Int] = [2, 3, 4, 5, 6]
-            
-            for day in days {
-                for i in 0..<2 {
-                    let routine = Routine(
-                        name: "Sample Routine",
-                        details: "Seeded routine",
-                        dueHour: 9 + i,
-                        dueMinute: 0,
-                        completions: [],
-                        recurrences: [day]
-                    )
-                    
-                    modelContext.insert(routine)
-                }
-            }
-            
-            try? modelContext.save()
+        guard routines.isEmpty else { return }
+        
+        let routineTemplates: [(name: String, details: String, hour: Int, minute: Int, days: [Int])] = [
+            ("Morning Jog", "Jog for 30 minutes", 6, 30, [2,3,4,5,6]),
+            ("Drink Water", "Drink a glass of water", 9, 0, [1,2,3,4,5,6,7]),
+            ("Read Book", "Read 20 pages", 20, 0, [2,4,6]),
+            ("Meditation", "10 minutes meditation", 7, 0, [1,2,3,4,5,6,7]),
+            ("Weekly Call", "Call parents", 18, 0, [7])
+        ]
+        
+        for template in routineTemplates {
+            let routine = Routine(
+                name: template.name,
+                details: template.details,
+                dueHour: template.hour,
+                dueMinute: template.minute,
+                completions: [],
+                recurrences: template.days
+            )
+            modelContext.insert(routine)
         }
+        
+        try? modelContext.save()
     }
 }

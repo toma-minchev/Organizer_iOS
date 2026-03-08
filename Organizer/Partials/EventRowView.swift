@@ -13,7 +13,9 @@ struct EventRowView: View {
     
     let event: Event
     let showActionButtons: Bool
-    
+    let pickedDate: Date
+    private var isOverdue: Bool { event.dueDate < Date() && pickedDate < Date() && !event.isCompleted }
+
     
     var body: some View {
         NavigationLink {
@@ -40,7 +42,7 @@ struct EventRowView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(event.dueDate.formatted(.dateTime.hour().minute())) • \(event.recurrenceDescription)")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isOverdue ? Color(.red) : .secondary)
                     
                     Text(event.name)
                     .lineLimit(1)

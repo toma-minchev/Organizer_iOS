@@ -28,14 +28,16 @@ final class Event: TimelineEntry {
     var name: String
     var details: String
     var dueDate: Date
+    var creationDate: Date
     var isCompleted: Bool
     var recurrenceValue: Int
     var recurrenceUnit: RecurrenceUnit
     
-    init(name: String, details: String, dueDate: Date, isCompleted: Bool, recurrenceValue: Int, recurrenceUnit: RecurrenceUnit) {
+    init(name: String, details: String, dueDate: Date, creationDate: Date, isCompleted: Bool, recurrenceValue: Int, recurrenceUnit: RecurrenceUnit) {
         self.name = name
         self.details = details
         self.dueDate = dueDate
+        self.creationDate = creationDate
         self.isCompleted = isCompleted
         self.recurrenceValue = recurrenceValue
         self.recurrenceUnit = recurrenceUnit
@@ -90,6 +92,39 @@ extension Event {
                 return recurrenceValue == 1
                 ? "Every year"
                 : "Every \(recurrenceValue) years"
+        }
+    }
+    
+    func occurs(on date: Date) -> Bool {
+        let calendar = Calendar.current
+
+        if calendar.isDate(dueDate, inSameDayAs: date) {
+            return true
+        }
+
+        guard recurrenceValue > 0 else { return false }
+        guard date >= creationDate else { return false }
+
+        switch recurrenceUnit {
+
+        case .hour:
+            return true
+
+        case .day:
+            let days = calendar.dateComponents([.day], from: dueDate, to: date).day ?? 0
+            return days % recurrenceValue == 0
+
+        case .week:
+            let weeks = calendar.dateComponents([.weekOfYear], from: dueDate, to: date).weekOfYear ?? 0
+            return weeks % recurrenceValue == 0
+
+        case .month:
+            let months = calendar.dateComponents([.month], from: dueDate, to: date).month ?? 0
+            return months % recurrenceValue == 0
+
+        case .year:
+            let years = calendar.dateComponents([.year], from: dueDate, to: date).year ?? 0
+            return years % recurrenceValue == 0
         }
     }
     

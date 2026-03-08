@@ -9,7 +9,7 @@ import SwiftUI
 import SwiftData
 
 
-protocol TimelineEntry: Identifiable {
+protocol TimelineEntry {
     var secondsFromMidnight: Int { get }
 }
 
@@ -27,15 +27,12 @@ struct TimelineView: View {
     
     private var selectedWeekday: Int { Calendar.current.component(.weekday, from: selectedDate) }
     private var filteredRoutines: [Routine] { routines.filter { $0.recurrences.contains(selectedWeekday) } }
-    private var filteredEvents: [Event] { events.filter { event in Calendar.current.isDate(event.dueDate, inSameDayAs: selectedDate) } }
-    
+    private var filteredEvents: [Event] { events.filter { $0.occurs(on: selectedDate) } }
     private var timelineItems: [any TimelineEntry] {
-        let items: [any TimelineEntry] = filteredEvents + filteredRoutines
-        return items.sorted { lhs, rhs in
-            (lhs as? Event)?.secondsFromMidnight ?? (lhs as? Routine)?.secondsFromMidnight ?? 0 <
-            (rhs as? Event)?.secondsFromMidnight ?? (rhs as? Routine)?.secondsFromMidnight ?? 0
-        }
+        (filteredEvents as [any TimelineEntry] + filteredRoutines as [any TimelineEntry])
+        .sorted { ($0.secondsFromMidnight, $0 is Routine ? 1 : 0) < ($1.secondsFromMidnight, $1 is Routine ? 1 : 0)}
     }
+    
     
     var body: some View {
         NavigationStack {
@@ -45,7 +42,8 @@ struct TimelineView: View {
                         if let event = item as? Event {
                             EventRowView(
                                 event: event,
-                                showActionButtons: showActionButtons
+                                showActionButtons: showActionButtons,
+                                pickedDate: selectedDate
                             )
                         }
 
@@ -135,32 +133,45 @@ struct TimelineView: View {
     }
     
     private func seedIfNeeded() {
-        if events.isEmpty {
-            let calendar = Calendar.current
-            let today = Date()
+        guard events.isEmpty else { return }
+        
+        let calendar = Calendar.current
+        let today = Date()
+        
+        let eventTemplates: [(name: String, details: String, offsetDays: Int, hour: Int, minute: Int, recurrence: (value: Int, unit: RecurrenceUnit)?)] = [
+            ("Project Meeting", "Discuss sprint tasks", 0, 10, 0, nil),
+            ("Lunch with Friend", "Meet at cafe", 0, 13, 30, nil),
+            ("Workout", "Gym session", -1, 18, 0, (1, .day)),
+            ("Check Email", "Daily inbox review", 0, 8, 0, (1, .day)),
+            ("Pay Bills", "Monthly electricity and internet", 2, 12, 0, (1, .month)),
+            ("Weekly Review", "Review goals and tasks", 0, 17, 30, (1, .week))
+        ]
+        
+        for template in eventTemplates {
+            guard let dueDate = calendar.date(
+                byAdding: .day,
+                value: template.offsetDays,
+                to: today
+            ) else { continue }
             
-            let dates = [
-                calendar.date(byAdding: .day, value: -1, to: today)!,
-                today,
-                calendar.date(byAdding: .day, value: 1, to: today)!
-            ]
+            let event = Event(
+                name: template.name,
+                details: template.details,
+                dueDate: calendar.date(
+                    bySettingHour: template.hour,
+                    minute: template.minute,
+                    second: 0,
+                    of: dueDate
+                ) ?? dueDate,
+                creationDate: today,
+                isCompleted: false,
+                recurrenceValue: template.recurrence?.value ?? 0,
+                recurrenceUnit: template.recurrence?.unit ?? .day
+            )
             
-            for date in dates {
-                for _ in 0..<4 {
-                    let event = Event(
-                        name: "Sample Event",
-                        details: "Seeded event",
-                        dueDate: date,
-                        isCompleted: false,
-                        recurrenceValue: 1,
-                        recurrenceUnit: .day
-                    )
-                    
-                    modelContext.insert(event)
-                }
-            }
-            
-            try? modelContext.save()
+            modelContext.insert(event)
         }
+        
+        try? modelContext.save()
     }
 }

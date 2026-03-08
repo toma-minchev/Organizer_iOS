@@ -15,9 +15,15 @@ struct RoutineRowView: View {
     let selectedWeekday: Weekday
     let showActionButtons: Bool
     let orderedWeekdays: [Weekday]
-    
+    private var dueTime: Date { Calendar.current.date(
+        bySettingHour: routine.dueHour,
+        minute: routine.dueMinute,
+        second: 0,
+        of: Date()
+    ) ?? Date()}
     private var completed: Bool { routine.completions.contains(selectedWeekday.id) }
-    
+    private var isOverdue: Bool {dueTime < Date() && !completed }
+
     
     var body: some View {
         NavigationLink {

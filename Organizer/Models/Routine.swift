@@ -1,5 +1,5 @@
 //
-//  Event.swift
+//  Routine.swift
 //  Organizer
 //
 //  Created by Toma Minchev on 25.02.26.
