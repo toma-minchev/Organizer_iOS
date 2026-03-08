@@ -15,18 +15,18 @@ struct EditRoutineView: View {
     
     @Bindable var routine: Routine
     let orderedWeekdays: [Weekday]
-    let selectedDay: Weekday
+    let selectedWeekday: Weekday
     
     private var completedBinding: Binding<Bool> {
         Binding<Bool>(
-            get: { routine.completions.contains(selectedDay.id) },
+            get: { routine.completions.contains(selectedWeekday.id) },
             set: { newValue in
                 if newValue {
-                    if !routine.completions.contains(selectedDay.id) {
-                        routine.completions.append(selectedDay.id)
+                    if !routine.completions.contains(selectedWeekday.id) {
+                        routine.completions.append(selectedWeekday.id)
                     }
                 } else {
-                    routine.completions.removeAll { $0 == selectedDay.id }
+                    routine.completions.removeAll { $0 == selectedWeekday.id }
                 }
             }
         )
@@ -45,23 +45,24 @@ struct EditRoutineView: View {
         NavigationStack {
             Form {
                 TextField("Name", text: $routine.name)
-                    .bold(true)
-                    .padding(.top, 6)
-                    .padding(.horizontal, 6)
+                .bold(true)
+                .padding(.top, 6)
+                .padding(.horizontal, 6)
                 
                 ZStack(alignment: .topLeading) {
                     if routine.details.isEmpty {
                         Text("Details")
-                            .foregroundColor(.secondary)
-                            .padding(.top, 8)
-                            .padding(.horizontal, 6)
-                            .bold()
+                        .foregroundColor(.secondary)
+                        .padding(.top, 8)
+                        .padding(.horizontal, 6)
+                        .bold()
                     }
 
                     TextEditor(text: $routine.details)
-                        .frame(minHeight: 120)
-                        .frame(maxHeight: 300)
+                    .frame(minHeight: 120)
+                    .frame(maxHeight: 300)
                 }
+                
                 DatePicker(
                     "Complete By",
                     selection: Binding<Date>(
@@ -81,6 +82,7 @@ struct EditRoutineView: View {
                     ),
                     displayedComponents: .hourAndMinute
                 )
+                
                 Toggle("Completed", isOn: completedBinding)
                 
                 Section("Repeat") {
@@ -90,12 +92,12 @@ struct EditRoutineView: View {
                         } label: {
                             HStack {
                                 Text(String(describing: day).capitalized)
-                                    .foregroundColor(.primary)
+                                .foregroundColor(.primary)
                                 
                                 Spacer()
                                 if routine.recurrences.contains(day.rawValue) {
                                     Image(systemName: "checkmark")
-                                        .foregroundColor(.accentColor)
+                                    .foregroundColor(.accentColor)
                                 }
                             }
                         }

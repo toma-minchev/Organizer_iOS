@@ -12,26 +12,24 @@ struct RoutineRowView: View {
     @Environment(\.modelContext) private var modelContext
     
     let routine: Routine
-    let selectedDay: Weekday
+    let selectedWeekday: Weekday
     let showActionButtons: Bool
     let orderedWeekdays: [Weekday]
     
-    private var completed: Bool {
-        routine.completions.contains(selectedDay.id)
-    }
+    private var completed: Bool { routine.completions.contains(selectedWeekday.id) }
     
     
     var body: some View {
         NavigationLink {
-            EditRoutineView(routine: routine, orderedWeekdays: orderedWeekdays, selectedDay: selectedDay)
+            EditRoutineView(routine: routine, orderedWeekdays: orderedWeekdays, selectedWeekday: selectedWeekday)
         } label: {
             HStack {
                 if showActionButtons {
                     Button {
                         if completed {
-                            routine.completions.removeAll { $0 == selectedDay.id }
+                            routine.completions.removeAll { $0 == selectedWeekday.id }
                         } else {
-                            routine.completions.append(selectedDay.id)
+                            routine.completions.append(selectedWeekday.id)
                         }
                     } label: {
                         Image(systemName: completed ? "checkmark.circle.fill" : "circle")
@@ -79,9 +77,9 @@ struct RoutineRowView: View {
         .swipeActions(edge: .trailing) {
             Button {
                 if completed {
-                    routine.completions.removeAll { $0 == selectedDay.id }
+                    routine.completions.removeAll { $0 == selectedWeekday.id }
                 } else {
-                    routine.completions.append(selectedDay.id)
+                    routine.completions.append(selectedWeekday.id)
                 }
             } label: {
                 Label(completed ? "Undo" : "Done", systemImage: "checkmark")

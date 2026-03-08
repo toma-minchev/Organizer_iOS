@@ -20,22 +20,24 @@ struct EditEventView: View {
         NavigationStack {
             Form {
                 TextField("Name", text: $event.name)
-                    .bold(true)
-                    .padding(.top, 6)
-                    .padding(.horizontal, 6)
+                .bold(true)
+                .padding(.top, 6)
+                .padding(.horizontal, 6)
+                
                 ZStack(alignment: .topLeading) {
                     if event.details.isEmpty {
                         Text("Details")
-                            .foregroundColor(.secondary)
-                            .padding(.top, 6)
-                            .padding(.horizontal, 6)
-                            .bold()
+                        .foregroundColor(.secondary)
+                        .padding(.top, 6)
+                        .padding(.horizontal, 6)
+                        .bold()
                     }
 
                     TextEditor(text: $event.details)
-                        .frame(minHeight: 120)
-                        .frame(maxHeight: 300)
+                    .frame(minHeight: 120)
+                    .frame(maxHeight: 300)
                 }
+                
                 DatePicker("Due Date", selection: $event.dueDate)
                 Toggle("Completed", isOn: $event.isCompleted)
                 
@@ -55,11 +57,11 @@ struct EditEventView: View {
                                 }
                             } label: {
                                 Text("\(event.recurrenceValue)")
-                                    .frame(minWidth: 20)
-                                    .foregroundColor(.primary)
-                                    .padding(.horizontal, 13)
-                                    .padding(.vertical, 8)
-                                    .background(Capsule().fill(Color(.secondarySystemFill)))
+                                .frame(minWidth: 20)
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 13)
+                                .padding(.vertical, 8)
+                                .background(Capsule().fill(Color(.secondarySystemFill)))
                             }
 
                             Menu {
@@ -68,13 +70,18 @@ struct EditEventView: View {
                                 }
                             } label: {
                                 Text(Event.unitText(text: event.recurrenceUnit.rawValue, value: event.recurrenceValue))
-                                    .foregroundColor(.primary)
-                                    .padding(.horizontal, 13)
-                                    .padding(.vertical, 8)
-                                    .background(Capsule().fill(Color(.secondarySystemFill)))
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 13)
+                                .padding(.vertical, 8)
+                                .background(Capsule().fill(Color(.secondarySystemFill)))
                             }
                             .onChange(of: event.recurrenceUnit) {
                                 event.recurrenceValue = min(event.recurrenceValue, Event.recurrenceRange(for: event.recurrenceUnit).upperBound)
+                            }
+                            .onChange(of: event.isCompleted) {
+                                if event.isCompleted && event.recurrenceValue > 0 {
+                                    event.addToDueDate()
+                                }
                             }
                         }
                     }

@@ -48,23 +48,24 @@ struct AddRoutineView: View {
         NavigationStack {
             Form {
                 TextField("Name", text: $name)
-                    .bold()
-                    .padding(.top, 6)
-                    .padding(.horizontal, 6)
+                .bold()
+                .padding(.top, 6)
+                .padding(.horizontal, 6)
                 
                 ZStack(alignment: .topLeading) {
                     if details.isEmpty {
                         Text("Details")
-                            .foregroundColor(.secondary)
-                            .padding(.top, 8)
-                            .padding(.horizontal, 6)
-                            .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 8)
+                        .padding(.horizontal, 6)
+                        .fontWeight(.semibold)
                     }
 
                     TextEditor(text: $details)
-                        .frame(minHeight: 120)
-                        .frame(maxHeight: 300)
+                    .frame(minHeight: 120)
+                    .frame(maxHeight: 300)
                 }
+                
                 DatePicker(
                     "Complete By",
                     selection: Binding<Date>(
@@ -92,12 +93,12 @@ struct AddRoutineView: View {
                         } label: {
                             HStack {
                                 Text(String(describing: day).capitalized)
-                                    .foregroundColor(.primary)
+                                .foregroundColor(.primary)
                                 
                                 Spacer()
                                 if selectedDays.contains(day.rawValue) {
                                     Image(systemName: "checkmark")
-                                        .foregroundColor(.accentColor)
+                                    .foregroundColor(.accentColor)
                                 }
                             }
                         }
@@ -131,4 +132,3 @@ struct AddRoutineView: View {
         }
     }
 }
-

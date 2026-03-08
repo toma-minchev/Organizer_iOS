@@ -10,7 +10,11 @@ import SwiftData
 
 
 @Model
-final class Routine {
+final class Routine: TimelineEntry {
+    var secondsFromMidnight: Int {
+        dueHour * 3600 + dueMinute * 60
+    }
+    
     var name: String
     var details: String
     var dueHour: Int

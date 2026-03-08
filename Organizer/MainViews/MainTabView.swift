@@ -7,23 +7,23 @@
 import SwiftUI
 import SwiftData
 
+
 struct MainTabView: View {
     var body: some View {
         TabView() {
-            EventsView()
-                .tabItem {
-                    Label("Timeline", systemImage: "calendar")
-                }
+            TimelineView()
+            .tabItem {
+                Label("Timeline", systemImage: "list.bullet")
+            }
 
             RoutineView()
-                .tabItem {
-                    Label("Routine", systemImage: "square.grid.2x2")
-                }
+            .tabItem {
+                Label("Routine", systemImage: "repeat")
+            }
         }
     }
 }
 
 #Preview {
     MainTabView()
-        .modelContainer(for: Event.self, inMemory: false)
 }

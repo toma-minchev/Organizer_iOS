@@ -18,7 +18,13 @@ enum RecurrenceUnit: String, CaseIterable, Codable {
 }
 
 @Model
-final class Event {
+final class Event: TimelineEntry {
+    var secondsFromMidnight: Int {
+        let calendar = Calendar.current
+        let comps = calendar.dateComponents([.hour, .minute, .second], from: dueDate)
+        return (comps.hour ?? 0) * 3600 + (comps.minute ?? 0) * 60 + (comps.second ?? 0)
+    }
+    
     var name: String
     var details: String
     var dueDate: Date
@@ -38,6 +44,22 @@ final class Event {
 
 
 extension Event {
+    func addToDueDate() {
+        if isCompleted && recurrenceValue > 0 {
+            let calendar = Calendar.current
+            
+            switch recurrenceUnit {
+                case .hour: dueDate = calendar.date(byAdding: .hour, value: recurrenceValue, to: dueDate)!
+                case .day: dueDate = calendar.date(byAdding: .day, value: recurrenceValue, to: dueDate)!
+                case .week: dueDate = calendar.date(byAdding: .weekOfYear, value: recurrenceValue, to: dueDate)!
+                case .month: dueDate = calendar.date(byAdding: .month, value: recurrenceValue, to: dueDate)!
+                case .year: dueDate = calendar.date(byAdding: .year, value: recurrenceValue, to: dueDate)!
+            }
+            
+            isCompleted = false
+        }
+    }
+    
     var recurrenceDescription: String {
         if recurrenceValue == 0 {
             return "No repeat"
@@ -85,4 +107,3 @@ extension Event {
         return "\(text.capitalized)\(value == 1 ? "" : "s")"
     }
 }
-

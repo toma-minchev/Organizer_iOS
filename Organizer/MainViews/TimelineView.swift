@@ -9,40 +9,53 @@ import SwiftUI
 import SwiftData
 
 
-struct EventsView: View {
+protocol TimelineEntry: Identifiable {
+    var secondsFromMidnight: Int { get }
+}
+
+
+struct TimelineView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var events: [Event]
+    
+    @Query(sort: [SortDescriptor(\Event.dueDate)]) private var events: [Event]
+    @Query(sort: [SortDescriptor(\Routine.dueHour), SortDescriptor(\Routine.dueMinute)]) private var routines: [Routine]
     
     @State private var showingAddEvent = false
     @State private var showActionButtons = false
+    @State private var showRoutines = true
     @State private var selectedDate = Date()
     
-    private var filteredEvents: [Event] {
-        events.filter { event in
-            Calendar.current.isDate(event.dueDate, inSameDayAs: selectedDate)
-        }
-    }
+    private var selectedWeekday: Int { Calendar.current.component(.weekday, from: selectedDate) }
+    private var filteredRoutines: [Routine] { routines.filter { $0.recurrences.contains(selectedWeekday) } }
+    private var filteredEvents: [Event] { events.filter { event in Calendar.current.isDate(event.dueDate, inSameDayAs: selectedDate) } }
     
-    private func deleteEvents(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(events[index])
-            }
+    private var timelineItems: [any TimelineEntry] {
+        let items: [any TimelineEntry] = filteredEvents + filteredRoutines
+        return items.sorted { lhs, rhs in
+            (lhs as? Event)?.secondsFromMidnight ?? (lhs as? Routine)?.secondsFromMidnight ?? 0 <
+            (rhs as? Event)?.secondsFromMidnight ?? (rhs as? Routine)?.secondsFromMidnight ?? 0
         }
     }
-
     
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .topLeading) {
+            ZStack(alignment: .top) {
                 List {
-                    ForEach(filteredEvents) { event in
-                        EventRowView(
-                            event: event,
-                            showActionButtons: showActionButtons
-                        )
-                        .onDisappear {
-                            showActionButtons = false
+                    ForEach(Array(timelineItems.enumerated()), id: \.offset) { _, item in
+                        if let event = item as? Event {
+                            EventRowView(
+                                event: event,
+                                showActionButtons: showActionButtons
+                            )
+                        }
+
+                        if showRoutines, let routine = item as? Routine {
+                            RoutineRowView(
+                                routine: routine,
+                                selectedWeekday: Weekday(rawValue: selectedWeekday)!,
+                                showActionButtons: showActionButtons,
+                                orderedWeekdays: Weekday.allCases
+                            )
                         }
                     }
                 }
@@ -74,12 +87,19 @@ struct EventsView: View {
                             label: { Label("Add Event", systemImage: "plus") }
                         }
                     }
-                }.overlay {
-                    if filteredEvents.isEmpty {
+                }
+                .overlay {
+                    if filteredEvents.isEmpty && !showRoutines {
                         ContentUnavailableView(
                             "No Events",
-                            systemImage: "calendar",
+                            systemImage: "list.bullet",
                             description: Text("There are no events for this date.")
+                        )
+                    } else if filteredEvents.isEmpty && showRoutines && filteredRoutines.isEmpty {
+                        ContentUnavailableView(
+                            "Nothing Scheduled",
+                            systemImage: "list.bullet",
+                            description: Text("There are no items for this date.")
                         )
                     }
                 }
@@ -90,18 +110,26 @@ struct EventsView: View {
                 .task {
                     seedIfNeeded()
                 }
-
-                DatePicker("", selection: $selectedDate, displayedComponents: .date)
-                    .background(
-                        RoundedRectangle(cornerRadius: 0)
-                        .fill(Color(.systemBackground))
-                        .blur(radius: 5)
-                    )
+                
+                HStack {
+                    DatePicker("", selection: $selectedDate, displayedComponents: .date)
+                    .background(Capsule().fill(.regularMaterial))
                     .labelsHidden()
                     .datePickerStyle(.compact)
-                    .padding(.horizontal)
-                    .padding(.top, 7)
-                    .zIndex(1)
+                    
+                    Spacer()
+                    
+                    Toggle(isOn: $showRoutines) {
+                        Image(systemName: "repeat")
+                    }
+                    .toggleStyle(.button)
+                    .foregroundColor(showRoutines ? .accentColor : .primary)
+                    .background(Capsule().fill(Color(.secondarySystemFill)))
+                    .background(Capsule().fill(.regularMaterial))
+                }
+                .padding(.horizontal)
+                .padding(.top, 7)
+                .zIndex(1)
             }
         }
     }

@@ -22,10 +22,15 @@ struct EventRowView: View {
             HStack {
                 if showActionButtons {
                     Button {
-                        event.isCompleted.toggle()
+                        withAnimation {
+                            event.isCompleted.toggle()
+                        }
+                        if event.isCompleted && event.recurrenceValue > 0 {
+                            event.addToDueDate()
+                        }
                     } label: {
                         Image(systemName: event.isCompleted ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 22))
+                        .font(.system(size: 22))
                     }
                     .foregroundColor(event.isCompleted ? .green : .secondary)
                     .buttonStyle(.borderless)
@@ -33,19 +38,20 @@ struct EventRowView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(event.dueDate.formatted(.dateTime.hour().minute())) • \(event.recurrenceDescription)")                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    Text("\(event.dueDate.formatted(.dateTime.hour().minute())) • \(event.recurrenceDescription)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                     
                     Text(event.name)
-                        .lineLimit(1)
-                        .bold()
-                        .foregroundColor(event.isCompleted ? .secondary : .primary)
-                        .strikethrough(event.isCompleted)
+                    .lineLimit(1)
+                    .bold()
+                    .foregroundColor(event.isCompleted ? .secondary : .primary)
+                    .strikethrough(event.isCompleted)
                     
                     if !event.isCompleted && !event.details.isEmpty {
                         Text(event.details)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                     }
                 }
                 
@@ -56,7 +62,7 @@ struct EventRowView: View {
                         modelContext.delete(event)
                     } label: {
                         Image(systemName: "trash")
-                            .font(.system(size: 22))
+                        .font(.system(size: 22))
                     }
                     .foregroundColor(.red)
                     .buttonStyle(.borderless)
@@ -69,6 +75,9 @@ struct EventRowView: View {
             Button {
                 withAnimation {
                     event.isCompleted.toggle()
+                }
+                if event.isCompleted && event.recurrenceValue > 0 {
+                    event.addToDueDate()
                 }
             } label: {
                 Label(event.isCompleted ? "Undo" : "Done", systemImage: "checkmark")

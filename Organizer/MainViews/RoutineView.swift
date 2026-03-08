@@ -19,7 +19,6 @@ enum Weekday: Int, CaseIterable, Identifiable {
     case saturday
 
     var id: Int { rawValue }
-
     var shortLetter: String {
         String(String(describing: self).prefix(1)).uppercased()
     }
@@ -27,26 +26,25 @@ enum Weekday: Int, CaseIterable, Identifiable {
 
 struct RoutineView: View {
     @Environment(\.modelContext) private var modelContext
+    
     @Query(sort: [SortDescriptor(\Routine.dueHour), SortDescriptor(\Routine.dueMinute)])
     private var routines: [Routine]
     
     @AppStorage("lastWeekNumber") private var lastWeekNumber: Int = 0
     private var currentWeekNumber: Int {
         var calendar = Calendar.current
-        calendar.firstWeekday = Calendar.current.firstWeekday // or a user-selected value
+        calendar.firstWeekday = Calendar.current.firstWeekday
         return calendar.component(.weekOfYear, from: Date())
     }
     
     @State private var showingAddRoutine = false
     @State private var showActionButtons = false
-    @State private var selectedDay: Weekday = {
+    @State private var selectedWeekday: Weekday = {
         let weekday = Calendar.current.component(.weekday, from: Date())
         return Weekday(rawValue: weekday)!
     }()
 
-    var filteredRoutines: [Routine] {
-        routines.filter { $0.recurrences.contains(selectedDay.rawValue) }
-    }
+    var filteredRoutines: [Routine] { routines.filter { $0.recurrences.contains(selectedWeekday.rawValue) } }
     
     private var orderedWeekdays: [Weekday] {
         let first = Calendar.current.firstWeekday
@@ -59,9 +57,7 @@ struct RoutineView: View {
     private func resetRoutinesIfNewWeek() {
         var calendar = Calendar.current
         calendar.firstWeekday = Calendar.current.firstWeekday
-        
         let currentWeek = calendar.component(.weekOfYear, from: Date())
-        
         guard currentWeek != lastWeekNumber else { return }
         
         for routine in routines {
@@ -69,7 +65,6 @@ struct RoutineView: View {
         }
         
         try? modelContext.save()
-        
         lastWeekNumber = currentWeek
     }
 
@@ -81,7 +76,7 @@ struct RoutineView: View {
                     ForEach(filteredRoutines) { routine in
                         RoutineRowView(
                             routine: routine,
-                            selectedDay: selectedDay,
+                            selectedWeekday: selectedWeekday,
                             showActionButtons: showActionButtons,
                             orderedWeekdays: orderedWeekdays
                         )
@@ -93,17 +88,13 @@ struct RoutineView: View {
                     seedIfNeeded()
                 }
                 
-                Picker("Day", selection: $selectedDay) {
+                Picker("Day", selection: $selectedWeekday) {
                     ForEach(orderedWeekdays) { day in
                         Text(day.shortLetter).tag(day)
                     }
                 }
                 .pickerStyle(.segmented)
-                .background(
-                    RoundedRectangle(cornerRadius: 0)
-                        .fill(Color(.systemBackground))
-                        .blur(radius: 5)
-                )
+                .background(Capsule().fill(.regularMaterial))
                 .padding(.horizontal)
                 .padding(.top, 7)
                 .zIndex(1)
