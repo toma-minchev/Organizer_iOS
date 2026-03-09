@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import UserNotifications
 
 
 @Model
@@ -53,5 +54,57 @@ extension Routine {
         return sorted
             .map { symbols[$0 - 1].prefix(3) }
             .joined(separator: " ")
+    }
+    
+    func scheduleNotification() {
+        let center = UNUserNotificationCenter.current()
+        
+        for weekday in recurrences {
+            var components = DateComponents()
+            components.weekday = weekday
+            let date = Calendar.current.date(
+                bySettingHour: dueHour,
+                minute: dueMinute,
+                second: 0,
+                of: Date()
+            )!
+
+            let triggerDate = date.addingTimeInterval(-60)
+
+            components.hour = Calendar.current.component(.hour, from: triggerDate)
+            components.minute = Calendar.current.component(.minute, from: triggerDate)
+            
+            let trigger = UNCalendarNotificationTrigger(
+                dateMatching: components,
+                repeats: true
+            )
+            
+            let content = UNMutableNotificationContent()
+            content.title = "Routine \"\(name)\" due in one minute."
+            content.body = details.count > 0 ? details : "Open the app for details."
+            content.sound = .default
+            
+            let request = UNNotificationRequest(
+                identifier: "routine-\(self.id)-\(weekday)",
+                content: content,
+                trigger: trigger
+            )
+            
+            center.add(request) { error in
+                if let error {
+                    print("Notification scheduling failed:", error)
+                }
+            }
+        }
+    }
+    
+    func deleteNotifications () {
+        for weekday in recurrences {
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["routine-\(self.id)-\(weekday)"])
+        }
+    }
+    
+    func deleteSingleNotification (weekday: Int) {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["routine-\(self.id)-\(weekday)"])
     }
 }

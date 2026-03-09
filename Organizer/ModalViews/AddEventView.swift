@@ -32,6 +32,8 @@ struct AddEventView: View {
 
         modelContext.insert(newEvent)
         try? modelContext.save()
+        
+        newEvent.scheduleNotification()
     }
     
     

@@ -11,6 +11,12 @@ import SwiftData
 
 @main
 struct OrganizerApp: App {
+    let notificationDelegate = NotificationDelegate()
+       
+    init() {
+        UNUserNotificationCenter.current().delegate = notificationDelegate
+    }
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Event.self,
@@ -30,6 +36,7 @@ struct OrganizerApp: App {
         WindowGroup {
             MainTabView()
                 .modelContainer(sharedModelContainer)
+                .task { NotificationManager.shared.requestPermission() }
         }
     }
 }

@@ -77,10 +77,24 @@ struct EditEventView: View {
                             }
                             .onChange(of: event.recurrenceUnit) {
                                 event.recurrenceValue = min(event.recurrenceValue, Event.recurrenceRange(for: event.recurrenceUnit).upperBound)
+                                event.scheduleNotification()
+                            }
+                            .onChange(of: event.recurrenceValue) {
+                                event.scheduleNotification()
+                            }
+                            .onChange(of: event.dueDate) {
+                                event.scheduleNotification()
                             }
                             .onChange(of: event.isCompleted) {
-                                if event.isCompleted && event.recurrenceValue > 0 {
-                                    event.addToDueDate()
+                                if event.isCompleted {
+                                    if event.recurrenceValue > 0 {
+                                        event.addToDueDate()
+                                        event.scheduleNotification()
+                                    } else {
+                                        event.deleteNotification()
+                                    }
+                                } else {
+                                    event.scheduleNotification()
                                 }
                             }
                         }
@@ -93,6 +107,7 @@ struct EditEventView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(role: .destructive) {
+                        event.deleteNotification()
                         modelContext.delete(event)
                         dismiss()
                     } label: {

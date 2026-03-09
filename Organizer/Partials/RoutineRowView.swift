@@ -15,14 +15,31 @@ struct RoutineRowView: View {
     let selectedWeekday: Weekday
     let showActionButtons: Bool
     let orderedWeekdays: [Weekday]
+    
     private var dueTime: Date { Calendar.current.date(
         bySettingHour: routine.dueHour,
         minute: routine.dueMinute,
         second: 0,
         of: Date()
     ) ?? Date()}
+    
     private var completed: Bool { routine.completions.contains(selectedWeekday.id) }
     private var isOverdue: Bool {dueTime < Date() && !completed }
+    
+    private func handleCompletion() {
+        if completed {
+            routine.completions.removeAll { $0 == selectedWeekday.id }
+            routine.deleteSingleNotification(weekday: selectedWeekday.id)
+        } else {
+            routine.completions.append(selectedWeekday.id)
+            routine.scheduleNotification()
+        }
+    }
+    
+    private func handleDeletion() {
+        routine.deleteNotifications()
+        modelContext.delete(routine)
+    }
 
     
     var body: some View {
@@ -32,11 +49,7 @@ struct RoutineRowView: View {
             HStack {
                 if showActionButtons {
                     Button {
-                        if completed {
-                            routine.completions.removeAll { $0 == selectedWeekday.id }
-                        } else {
-                            routine.completions.append(selectedWeekday.id)
-                        }
+                       handleCompletion()
                     } label: {
                         Image(systemName: completed ? "checkmark.circle.fill" : "circle")
                             .font(.system(size: 22))
@@ -68,7 +81,7 @@ struct RoutineRowView: View {
                 
                 if showActionButtons {
                     Button(role: .destructive) {
-                        modelContext.delete(routine)
+                        handleDeletion()
                     } label: {
                         Image(systemName: "trash")
                             .font(.system(size: 22))
@@ -82,18 +95,14 @@ struct RoutineRowView: View {
         }
         .swipeActions(edge: .trailing) {
             Button {
-                if completed {
-                    routine.completions.removeAll { $0 == selectedWeekday.id }
-                } else {
-                    routine.completions.append(selectedWeekday.id)
-                }
+                handleCompletion()
             } label: {
                 Label(completed ? "Undo" : "Done", systemImage: "checkmark")
             }
             .tint(completed ? .secondary : .blue)
             
             Button(role: .destructive) {
-                modelContext.delete(routine)
+                handleDeletion()
             } label: {
                 Label("Delete", systemImage: "trash")
             }

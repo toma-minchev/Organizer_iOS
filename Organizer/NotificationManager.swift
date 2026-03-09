@@ -1,3 +1,11 @@
+//
+//  NotificationManager.swift
+//  Organizer
+//
+//  Created by Toma Minchev on 9.03.26.
+//
+
+
 import UserNotifications
 
 final class NotificationManager {

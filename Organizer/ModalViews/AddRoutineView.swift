@@ -41,6 +41,8 @@ struct AddRoutineView: View {
         
         modelContext.insert(newRoutine)
         try? modelContext.save()
+        
+        newRoutine.scheduleNotification()
     }
     
     

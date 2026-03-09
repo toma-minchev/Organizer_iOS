@@ -15,6 +15,28 @@ struct EventRowView: View {
     let showActionButtons: Bool
     let pickedDate: Date
     private var isOverdue: Bool { event.dueDate < Date() && pickedDate < Date() && !event.isCompleted }
+    
+    private func handleCompletion() {
+        withAnimation {
+            event.isCompleted.toggle()
+        }
+        
+        if event.isCompleted {
+            if event.recurrenceValue > 0 {
+                event.addToDueDate()
+                event.scheduleNotification()
+            } else {
+                event.deleteNotification()
+            }
+        } else {
+            event.scheduleNotification()
+        }
+    }
+    
+    private func handleDeletion() {
+        event.deleteNotification()
+        modelContext.delete(event)
+    }
 
     
     var body: some View {
@@ -24,12 +46,7 @@ struct EventRowView: View {
             HStack {
                 if showActionButtons {
                     Button {
-                        withAnimation {
-                            event.isCompleted.toggle()
-                        }
-                        if event.isCompleted && event.recurrenceValue > 0 {
-                            event.addToDueDate()
-                        }
+                        handleCompletion()
                     } label: {
                         Image(systemName: event.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 22))
@@ -61,7 +78,7 @@ struct EventRowView: View {
                 
                 if showActionButtons {
                     Button(role: .destructive) {
-                        modelContext.delete(event)
+                        handleDeletion()
                     } label: {
                         Image(systemName: "trash")
                         .font(.system(size: 22))
@@ -75,19 +92,14 @@ struct EventRowView: View {
         }
         .swipeActions(edge: .trailing) {
             Button {
-                withAnimation {
-                    event.isCompleted.toggle()
-                }
-                if event.isCompleted && event.recurrenceValue > 0 {
-                    event.addToDueDate()
-                }
+                handleCompletion()
             } label: {
                 Label(event.isCompleted ? "Undo" : "Done", systemImage: "checkmark")
             }
             .tint(event.isCompleted ? .secondary : .blue)
             
             Button(role: .destructive) {
-                modelContext.delete(event)
+                handleDeletion()
             } label: {
                 Label("Delete", systemImage: "trash")
             }

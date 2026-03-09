@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import UserNotifications
 
 
 enum RecurrenceUnit: String, CaseIterable, Codable {
@@ -140,5 +141,41 @@ extension Event {
     
     static func unitText(text: String, value: Int) -> String {
         return "\(text.capitalized)\(value == 1 ? "" : "s")"
+    }
+    
+    func scheduleNotification() {
+        let triggerDate = dueDate.addingTimeInterval(-60)
+        guard triggerDate > Date() else { return }
+        
+        let center = UNUserNotificationCenter.current()
+        
+        let content = UNMutableNotificationContent()
+        content.title = "Event \"\(name)\" due in one minute."
+        content.body = details.count > 0 ? details : "Open the app for details."
+        content.sound = .default
+        
+        let trigger = UNCalendarNotificationTrigger(
+            dateMatching: Calendar.current.dateComponents(
+                [.year, .month, .day, .hour, .minute],
+                from: triggerDate
+            ),
+            repeats: false
+        )
+        
+        let request = UNNotificationRequest(
+            identifier: "event-\(self.id)",
+            content: content,
+            trigger: trigger
+        )
+        
+        center.add(request) { error in
+            if let error {
+                print("Notification scheduling failed:", error)
+            }
+        }
+    }
+    
+    func deleteNotification () {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["event-\(self.id)"])
     }
 }

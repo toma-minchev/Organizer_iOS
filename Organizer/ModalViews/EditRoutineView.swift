@@ -24,10 +24,30 @@ struct EditRoutineView: View {
                 if newValue {
                     if !routine.completions.contains(selectedWeekday.id) {
                         routine.completions.append(selectedWeekday.id)
+                        routine.scheduleNotification()
                     }
                 } else {
                     routine.completions.removeAll { $0 == selectedWeekday.id }
+                    routine.deleteSingleNotification(weekday: selectedWeekday.id)
                 }
+            }
+        )
+    }
+    
+    private var dueBinding: Binding<Date> {
+        Binding<Date> (
+            get: {
+                Calendar.current.date(
+                    bySettingHour: routine.dueHour,
+                    minute: routine.dueMinute,
+                    second: 0,
+                    of: Date()
+                ) ?? Date()
+            },
+            set: { newDate in
+                let comps = Calendar.current.dateComponents([.hour, .minute], from: newDate)
+                routine.dueHour = comps.hour ?? 0
+                routine.dueMinute = comps.minute ?? 0
             }
         )
     }
@@ -63,26 +83,7 @@ struct EditRoutineView: View {
                     .frame(maxHeight: 300)
                 }
                 
-                DatePicker(
-                    "Complete By",
-                    selection: Binding<Date>(
-                        get: {
-                            Calendar.current.date(
-                                bySettingHour: routine.dueHour,
-                                minute: routine.dueMinute,
-                                second: 0,
-                                of: Date()
-                            ) ?? Date()
-                        },
-                        set: { newDate in
-                            let comps = Calendar.current.dateComponents([.hour, .minute], from: newDate)
-                            routine.dueHour = comps.hour ?? 0
-                            routine.dueMinute = comps.minute ?? 0
-                        }
-                    ),
-                    displayedComponents: .hourAndMinute
-                )
-                
+                DatePicker("Complete By", selection: dueBinding, displayedComponents: .hourAndMinute)
                 Toggle("Completed", isOn: completedBinding)
                 
                 Section("Repeat") {
@@ -109,6 +110,7 @@ struct EditRoutineView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(role: .destructive) {
+                        routine.deleteNotifications()
                         modelContext.delete(routine)
                         dismiss()
                     } label: {
