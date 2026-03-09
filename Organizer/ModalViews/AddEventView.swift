@@ -19,6 +19,13 @@ struct AddEventView: View {
     @State private var recurrenceValue: Int = 0
     @State private var recurrenceUnit: RecurrenceUnit = .day
     
+    let selectedDate: Date
+    
+    init(selectedDate: Date) {
+        self.selectedDate = selectedDate
+        _dueDate = State(initialValue: selectedDate)
+    }
+    
     private func saveEvent() {
         let newEvent = Event(
             name: name,
@@ -95,14 +102,10 @@ struct AddEventView: View {
                                 .padding(.vertical, 8)
                                 .background(Capsule().fill(Color(.secondarySystemFill)))
                             }
-                            .onChange(of: recurrenceUnit) {
-                                recurrenceValue = min(recurrenceValue, Event.recurrenceRange(for: recurrenceUnit).upperBound)
-                            }
                         }
                     }
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: recurrenceValue > 0)
             .navigationTitle("New Event")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -123,6 +126,10 @@ struct AddEventView: View {
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
+            }
+            .animation(.easeInOut(duration: 0.2), value: recurrenceValue > 0)
+            .onChange(of: recurrenceUnit) {
+                recurrenceValue = min(recurrenceValue, Event.recurrenceRange(for: recurrenceUnit).upperBound)
             }
         }
     }

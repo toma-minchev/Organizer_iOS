@@ -75,33 +75,10 @@ struct EditEventView: View {
                                 .padding(.vertical, 8)
                                 .background(Capsule().fill(Color(.secondarySystemFill)))
                             }
-                            .onChange(of: event.recurrenceUnit) {
-                                event.recurrenceValue = min(event.recurrenceValue, Event.recurrenceRange(for: event.recurrenceUnit).upperBound)
-                                event.scheduleNotification()
-                            }
-                            .onChange(of: event.recurrenceValue) {
-                                event.scheduleNotification()
-                            }
-                            .onChange(of: event.dueDate) {
-                                event.scheduleNotification()
-                            }
-                            .onChange(of: event.isCompleted) {
-                                if event.isCompleted {
-                                    if event.recurrenceValue > 0 {
-                                        event.addToDueDate()
-                                        event.scheduleNotification()
-                                    } else {
-                                        event.deleteNotification()
-                                    }
-                                } else {
-                                    event.scheduleNotification()
-                                }
-                            }
                         }
                     }
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: event.recurrenceValue > 0)
             .navigationTitle("Edit Event")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -113,6 +90,29 @@ struct EditEventView: View {
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: event.recurrenceValue > 0)
+            .onChange(of: event.recurrenceUnit) {
+                event.recurrenceValue = min(event.recurrenceValue, Event.recurrenceRange(for: event.recurrenceUnit).upperBound)
+                event.scheduleNotification()
+            }
+            .onChange(of: event.recurrenceValue) {
+                event.scheduleNotification()
+            }
+            .onChange(of: event.dueDate) {
+                event.scheduleNotification()
+            }
+            .onChange(of: event.isCompleted) {
+                if event.isCompleted {
+                    if event.recurrenceValue > 0 {
+                        event.addToDueDate()
+                        event.scheduleNotification()
+                    } else {
+                        event.deleteNotification()
+                    }
+                } else {
+                    event.scheduleNotification()
                 }
             }
         }

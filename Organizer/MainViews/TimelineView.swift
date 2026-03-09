@@ -11,6 +11,7 @@ import SwiftData
 
 protocol TimelineEntry {
     var secondsFromMidnight: Int { get }
+    var persistentModelID: PersistentIdentifier { get }
 }
 
 
@@ -20,6 +21,7 @@ struct TimelineView: View {
     @Query(sort: [SortDescriptor(\Event.dueDate)]) private var events: [Event]
     @Query(sort: [SortDescriptor(\Routine.dueHour), SortDescriptor(\Routine.dueMinute)]) private var routines: [Routine]
     
+    @State private var slideDirection: Edge = .trailing
     @State private var showingAddEvent = false
     @State private var showActionButtons = false
     @State private var showRoutines = true
@@ -37,76 +39,54 @@ struct TimelineView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-                List {
-                    ForEach(Array(timelineItems.enumerated()), id: \.offset) { _, item in
-                        if let event = item as? Event {
-                            EventRowView(
-                                event: event,
-                                showActionButtons: showActionButtons,
-                                pickedDate: selectedDate
-                            )
-                        }
-
-                        if showRoutines, let routine = item as? Routine {
-                            RoutineRowView(
-                                routine: routine,
-                                selectedWeekday: Weekday(rawValue: selectedWeekday)!,
-                                showActionButtons: showActionButtons,
-                                orderedWeekdays: Weekday.allCases
-                            )
+                ZStack {
+                    List {
+                        ForEach(timelineItems, id: \.persistentModelID) { item in
+                            if let event = item as? Event {
+                                EventRowView(event: event, showActionButtons: showActionButtons, selectedDate: selectedDate)
+                            }
+                            
+                            if showRoutines, let routine = item as? Routine {
+                                RoutineRowView( routine: routine, selectedWeekday: Weekday(rawValue: selectedWeekday)!, showActionButtons: showActionButtons, orderedWeekdays: Weekday.allCases
+                                )
+                            }
                         }
                     }
-                }
-                .navigationTitle("Timeline")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        if !showActionButtons && events.count > 0 {
-                            Button("Edit") {
-                                withAnimation {
-                                    showActionButtons = true
+                    .id(selectedDate)
+                    .contentMargins(.top, 50)
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.2), value: timelineItems.count)
+                    .gesture(
+                        DragGesture(minimumDistance: 50, coordinateSpace: .local)
+                        .onEnded { value in
+                            if value.translation.width < 0 {
+                                slideDirection = .trailing
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate)!
+                                }
+                            } else if value.translation.width > 0 {
+                                slideDirection = .leading
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate)!
                                 }
                             }
-                        } else if events.count > 0 {
-                            Button(role: .confirm) {
-                                withAnimation {
-                                    showActionButtons = false
-                                }
-                            }
-                            label: {
-                                Image(systemName: "checkmark")
-                            }
+                        }
+                    )
+                    .overlay {
+                        if filteredEvents.isEmpty && !showRoutines {
+                            ContentUnavailableView(
+                                "No Events",
+                                systemImage: "list.bullet",
+                                description: Text("There are no events for this date.")
+                            )
+                        } else if filteredEvents.isEmpty && showRoutines && filteredRoutines.isEmpty {
+                            ContentUnavailableView(
+                                "Nothing Scheduled",
+                                systemImage: "list.bullet",
+                                description: Text("There are no items for this date.")
+                            )
                         }
                     }
-                    
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        if !showActionButtons {
-                            Button { showingAddEvent = true }
-                            label: { Label("Add Event", systemImage: "plus") }
-                        }
-                    }
-                }
-                .overlay {
-                    if filteredEvents.isEmpty && !showRoutines {
-                        ContentUnavailableView(
-                            "No Events",
-                            systemImage: "list.bullet",
-                            description: Text("There are no events for this date.")
-                        )
-                    } else if filteredEvents.isEmpty && showRoutines && filteredRoutines.isEmpty {
-                        ContentUnavailableView(
-                            "Nothing Scheduled",
-                            systemImage: "list.bullet",
-                            description: Text("There are no items for this date.")
-                        )
-                    }
-                }
-                .sheet(isPresented: $showingAddEvent) {
-                    AddEventView()
-                }
-                .contentMargins(.top, 50)
-                .task {
-                    seedIfNeeded()
                 }
                 
                 HStack {
@@ -117,7 +97,7 @@ struct TimelineView: View {
                     
                     Spacer()
                     
-                    Toggle(isOn: $showRoutines) {
+                    Toggle(isOn: $showRoutines.animation(.easeInOut(duration: 0.2))) {
                         Image(systemName: "repeat")
                     }
                     .toggleStyle(.button)
@@ -128,6 +108,44 @@ struct TimelineView: View {
                 .padding(.horizontal)
                 .padding(.top, 7)
                 .zIndex(1)
+            }
+            .navigationTitle("Timeline")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if !showActionButtons && events.count > 0 {
+                        Button("Edit") {
+                            withAnimation {
+                                showActionButtons = true
+                            }
+                        }
+                    } else if events.count > 0 {
+                        Button(role: .confirm) {
+                            withAnimation {
+                                showActionButtons = false
+                            }
+                        }
+                        label: {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if !showActionButtons {
+                        Button { showingAddEvent = true }
+                        label: { Label("Add Event", systemImage: "plus") }
+                    }
+                }
+            }
+            .onDisappear {
+                showActionButtons = false
+            }
+            .sheet(isPresented: $showingAddEvent) {
+                AddEventView(selectedDate: selectedDate)
+            }
+            .task {
+                seedIfNeeded()
             }
         }
     }
@@ -170,6 +188,7 @@ struct TimelineView: View {
             )
             
             modelContext.insert(event)
+            event.scheduleNotification()
         }
         
         try? modelContext.save()

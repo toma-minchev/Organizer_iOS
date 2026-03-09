@@ -107,25 +107,26 @@ extension Event {
         guard date >= creationDate else { return false }
 
         switch recurrenceUnit {
+            case .hour:
+                return true
+            case .day:
+                let days = calendar.dateComponents([.day], from: dueDate, to: date).day ?? 0
+                return days % recurrenceValue == 0
+            case .week:
+                let weeks = calendar.dateComponents([.weekOfYear], from: dueDate, to: date).weekOfYear ?? 0
+                let sameWeekday = calendar.component(.weekday, from: date) == calendar.component(.weekday, from: dueDate)
+                return sameWeekday && weeks % recurrenceValue == 0
 
-        case .hour:
-            return true
+            case .month:
+                let months = calendar.dateComponents([.month], from: dueDate, to: date).month ?? 0
+                let sameDay = calendar.component(.day, from: date) == calendar.component(.day, from: dueDate)
+                return sameDay && months % recurrenceValue == 0
 
-        case .day:
-            let days = calendar.dateComponents([.day], from: dueDate, to: date).day ?? 0
-            return days % recurrenceValue == 0
-
-        case .week:
-            let weeks = calendar.dateComponents([.weekOfYear], from: dueDate, to: date).weekOfYear ?? 0
-            return weeks % recurrenceValue == 0
-
-        case .month:
-            let months = calendar.dateComponents([.month], from: dueDate, to: date).month ?? 0
-            return months % recurrenceValue == 0
-
-        case .year:
-            let years = calendar.dateComponents([.year], from: dueDate, to: date).year ?? 0
-            return years % recurrenceValue == 0
+            case .year:
+                let years = calendar.dateComponents([.year], from: dueDate, to: date).year ?? 0
+                let sameMonth = calendar.component(.month, from: date) == calendar.component(.month, from: dueDate)
+                let sameDay = calendar.component(.day, from: date) == calendar.component(.day, from: dueDate)
+                return sameMonth && sameDay && years % recurrenceValue == 0
         }
     }
     

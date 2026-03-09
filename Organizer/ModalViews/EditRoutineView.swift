@@ -24,11 +24,11 @@ struct EditRoutineView: View {
                 if newValue {
                     if !routine.completions.contains(selectedWeekday.id) {
                         routine.completions.append(selectedWeekday.id)
-                        routine.scheduleNotification()
+                        routine.deleteSingleNotification(weekday: selectedWeekday.id)
                     }
                 } else {
                     routine.completions.removeAll { $0 == selectedWeekday.id }
-                    routine.deleteSingleNotification(weekday: selectedWeekday.id)
+                    routine.scheduleNotification()
                 }
             }
         )
@@ -48,6 +48,7 @@ struct EditRoutineView: View {
                 let comps = Calendar.current.dateComponents([.hour, .minute], from: newDate)
                 routine.dueHour = comps.hour ?? 0
                 routine.dueMinute = comps.minute ?? 0
+                routine.scheduleNotification()
             }
         )
     }

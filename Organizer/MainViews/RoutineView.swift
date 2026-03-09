@@ -30,6 +30,14 @@ struct RoutineView: View {
     @Query(sort: [SortDescriptor(\Routine.dueHour), SortDescriptor(\Routine.dueMinute)])
     private var routines: [Routine]
     
+    @State private var slideDirection: Edge = .trailing
+    @State private var showingAddRoutine = false
+    @State private var showActionButtons = false
+    @State private var selectedWeekday: Weekday = {
+        let weekday = Calendar.current.component(.weekday, from: Date())
+        return Weekday(rawValue: weekday)!
+    }()
+    
     @AppStorage("lastWeekNumber") private var lastWeekNumber: Int = 0
     private var currentWeekNumber: Int {
         var calendar = Calendar.current
@@ -37,13 +45,6 @@ struct RoutineView: View {
         return calendar.component(.weekOfYear, from: Date())
     }
     
-    @State private var showingAddRoutine = false
-    @State private var showActionButtons = false
-    @State private var selectedWeekday: Weekday = {
-        let weekday = Calendar.current.component(.weekday, from: Date())
-        return Weekday(rawValue: weekday)!
-    }()
-
     var filteredRoutines: [Routine] { routines.filter { $0.recurrences.contains(selectedWeekday.rawValue) } }
     
     private var orderedWeekdays: [Weekday] {
@@ -62,30 +63,89 @@ struct RoutineView: View {
         
         for routine in routines {
             routine.completions = []
+            routine.scheduleNotification()
         }
         
         try? modelContext.save()
         lastWeekNumber = currentWeek
     }
+    
+    func schedulePausedNotificationsReminder() {
+            let center = UNUserNotificationCenter.current()
+            
+            center.removePendingNotificationRequests(withIdentifiers: ["notifications-paused-reminder"])
+            
+            let calendar = Calendar.current
+            guard let reminderDate = calendar.date(byAdding: .weekOfYear, value: 3, to: Date()) else { return }
+            
+            var components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: reminderDate)
+            components.hour = 9
+            components.minute = 0
+            
+            let content = UNMutableNotificationContent()
+            content.title = "Routine notifications paused."
+            content.body = "Notifications will resume when you open the app."
+            content.sound = .default
+            
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+            let request = UNNotificationRequest(
+                identifier: "notifications-paused-reminder",
+                content: content,
+                trigger: trigger
+            )
+            
+            center.add(request) { error in
+                if let error {
+                    print("Failed to schedule paused notifications reminder:", error)
+                }
+            }
+        }
 
     
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-                List {
-                    ForEach(filteredRoutines) { routine in
-                        RoutineRowView(
-                            routine: routine,
-                            selectedWeekday: selectedWeekday,
-                            showActionButtons: showActionButtons,
-                            orderedWeekdays: orderedWeekdays
-                        )
+                ZStack {
+                    List {
+                        ForEach(filteredRoutines) { routine in
+                            RoutineRowView(
+                                routine: routine,
+                                selectedWeekday: selectedWeekday,
+                                showActionButtons: showActionButtons,
+                                orderedWeekdays: orderedWeekdays
+                            )
+                        }
                     }
-                }
-                .contentMargins(.top, 50)
-                .task {
-                    resetRoutinesIfNewWeek()
-                    seedIfNeeded()
+                    .id(selectedWeekday)
+                    .contentMargins(.top, 50)
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.2), value: filteredRoutines.count)
+                    .gesture(
+                        DragGesture(minimumDistance: 50, coordinateSpace: .local)
+                        .onEnded { value in
+                            let current = orderedWeekdays.firstIndex(of: selectedWeekday)!
+                            if value.translation.width < 0 {
+                                slideDirection = .trailing
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    selectedWeekday = orderedWeekdays[(current + 1) % orderedWeekdays.count]
+                                }
+                            } else if value.translation.width > 0 {
+                                slideDirection = .leading
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    selectedWeekday = orderedWeekdays[(current - 1 + orderedWeekdays.count) % orderedWeekdays.count]
+                                }
+                            }
+                        }
+                    )
+                    .overlay {
+                        if filteredRoutines.isEmpty {
+                            ContentUnavailableView(
+                                "No Routine",
+                                systemImage: "repeat.circle",
+                                description: Text("There is no routine for this day.")
+                            )
+                        }
+                    }
                 }
                 
                 Picker("Day", selection: $selectedWeekday) {
@@ -129,17 +189,16 @@ struct RoutineView: View {
                     }
                 }
             }
-            .overlay {
-                if filteredRoutines.isEmpty {
-                    ContentUnavailableView(
-                        "No Routine",
-                        systemImage: "repeat.circle",
-                        description: Text("There is no routine for this day.")
-                    )
-                }
+            .onDisappear {
+                showActionButtons = false
             }
             .sheet(isPresented: $showingAddRoutine) {
                 AddRoutineView(orderedWeekdays: orderedWeekdays)
+            }
+            .task {
+                schedulePausedNotificationsReminder()
+                resetRoutinesIfNewWeek()
+                seedIfNeeded()
             }
         }
     }
@@ -164,7 +223,9 @@ struct RoutineView: View {
                 completions: [],
                 recurrences: template.days
             )
+            
             modelContext.insert(routine)
+            routine.scheduleNotification()
         }
         
         try? modelContext.save()

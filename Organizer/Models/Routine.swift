@@ -58,53 +58,57 @@ extension Routine {
     
     func scheduleNotification() {
         let center = UNUserNotificationCenter.current()
+        let calendar = Calendar.current
         
-        for weekday in recurrences {
-            var components = DateComponents()
-            components.weekday = weekday
-            let date = Calendar.current.date(
-                bySettingHour: dueHour,
-                minute: dueMinute,
-                second: 0,
-                of: Date()
-            )!
-
-            let triggerDate = date.addingTimeInterval(-60)
-
-            components.hour = Calendar.current.component(.hour, from: triggerDate)
-            components.minute = Calendar.current.component(.minute, from: triggerDate)
-            
-            let trigger = UNCalendarNotificationTrigger(
-                dateMatching: components,
-                repeats: true
-            )
-            
-            let content = UNMutableNotificationContent()
-            content.title = "Routine \"\(name)\" due in one minute."
-            content.body = details.count > 0 ? details : "Open the app for details."
-            content.sound = .default
-            
-            let request = UNNotificationRequest(
-                identifier: "routine-\(self.id)-\(weekday)",
-                content: content,
-                trigger: trigger
-            )
-            
-            center.add(request) { error in
-                if let error {
-                    print("Notification scheduling failed:", error)
+        deleteNotifications()
+        
+        for weekOffset in 0..<2 {
+            for weekday in recurrences {
+                guard let baseNextDate = calendar.nextDate(
+                    after: Date(),
+                    matching: DateComponents(hour: dueHour, minute: dueMinute, weekday: weekday),
+                    matchingPolicy: .nextTime
+                ) else { continue }
+                
+                guard let nextDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: baseNextDate) else { continue }
+                
+                let triggerDate = nextDate.addingTimeInterval(-60)
+                guard triggerDate > Date() else { continue }
+                
+                let content = UNMutableNotificationContent()
+                content.title = "Routine \"\(name)\" due in one minute."
+                content.body = details.isEmpty ? "Open the app for details." : details
+                content.sound = .default
+                
+                let identifier = "routine-\(id)-\(weekday)-\(weekOffset)"
+                let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: triggerDate)
+                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+                
+                let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+                center.add(request) { error in
+                    if let error {
+                        print("Routine notification scheduling failed for \(identifier):", error)
+                    }
                 }
             }
         }
     }
     
-    func deleteNotifications () {
-        for weekday in recurrences {
-            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["routine-\(self.id)-\(weekday)"])
+    func deleteNotifications() {
+        var identifiers: [String] = []
+        for weekday in 1..<8 {
+            for offset in 0..<2 {
+                identifiers.append("routine-\(self.id)-\(weekday)-\(offset)")
+            }
         }
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
     }
     
     func deleteSingleNotification (weekday: Int) {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["routine-\(self.id)-\(weekday)"])
+        var identifiers: [String] = []
+        for offset in 0..<2 {
+            identifiers.append("routine-\(self.id)-\(weekday)-\(offset)")
+        }
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
     }
 }

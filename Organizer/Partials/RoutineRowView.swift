@@ -11,6 +11,8 @@ import SwiftData
 struct RoutineRowView: View {
     @Environment(\.modelContext) private var modelContext
     
+    @State private var showingEdit = false
+    
     let routine: Routine
     let selectedWeekday: Weekday
     let showActionButtons: Bool
@@ -23,16 +25,17 @@ struct RoutineRowView: View {
         of: Date()
     ) ?? Date()}
     
-    private var completed: Bool { routine.completions.contains(selectedWeekday.id) }
-    private var isOverdue: Bool {dueTime < Date() && !completed }
+    private var isCompleted: Bool { routine.completions.contains(selectedWeekday.id) }
+    private var isOverdue: Bool {dueTime < Date() && !isCompleted }
     
     private func handleCompletion() {
-        if completed {
-            routine.completions.removeAll { $0 == selectedWeekday.id }
-            routine.deleteSingleNotification(weekday: selectedWeekday.id)
-        } else {
-            routine.completions.append(selectedWeekday.id)
-            routine.scheduleNotification()
+        withAnimation {
+            if isCompleted {
+                routine.completions.removeAll { $0 == selectedWeekday.id }
+                routine.deleteSingleNotification(weekday: selectedWeekday.id)
+            } else {
+                routine.completions.append(selectedWeekday.id)
+            }
         }
     }
     
@@ -51,10 +54,10 @@ struct RoutineRowView: View {
                     Button {
                        handleCompletion()
                     } label: {
-                        Image(systemName: completed ? "checkmark.circle.fill" : "circle")
+                        Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
                             .font(.system(size: 22))
                     }
-                    .foregroundColor(completed ? .green : .secondary)
+                    .foregroundColor(isCompleted ? .green : .secondary)
                     .buttonStyle(.borderless)
                     .transition(.move(edge: .leading).combined(with: .opacity))
                 }
@@ -67,10 +70,10 @@ struct RoutineRowView: View {
                     Text(routine.name)
                         .lineLimit(1)
                         .bold()
-                        .foregroundColor(completed ? .secondary : .primary)
-                        .strikethrough(completed)
+                        .foregroundColor(isCompleted ? .secondary : .primary)
+                        .strikethrough(isCompleted)
                     
-                    if !completed && !routine.details.isEmpty {
+                    if !isCompleted && !routine.details.isEmpty {
                         Text(routine.details)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -91,20 +94,47 @@ struct RoutineRowView: View {
                     .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: showActionButtons)
         }
+        .navigationDestination(isPresented: $showingEdit) {
+            EditRoutineView(routine: routine, orderedWeekdays: orderedWeekdays, selectedWeekday: selectedWeekday)
+        }
+        .animation(.easeInOut(duration: 0.2), value: isCompleted)
+        .animation(.easeInOut(duration: 0.2), value: showActionButtons)
         .swipeActions(edge: .trailing) {
             Button {
                 handleCompletion()
             } label: {
-                Label(completed ? "Undo" : "Done", systemImage: "checkmark")
+                Label(isCompleted ? "Undo" : "Done", systemImage: "checkmark")
             }
-            .tint(completed ? .secondary : .blue)
+            .tint(isCompleted ? .secondary : .blue)
             
             Button(role: .destructive) {
                 handleDeletion()
             } label: {
                 Label("Delete", systemImage: "trash")
+            }
+        }
+        .contextMenu {
+            Button {
+                showingEdit = true
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            
+            Button {
+                handleCompletion()
+            } label: {
+                Label(isCompleted ? "Undo" : "Done", systemImage: "checkmark")
+            }
+            
+            Button(role: .destructive) {
+                handleDeletion()
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        } preview: {
+            NavigationStack {
+                EditRoutineView(routine: routine, orderedWeekdays: orderedWeekdays, selectedWeekday: selectedWeekday)
             }
         }
     }
