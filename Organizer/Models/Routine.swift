@@ -39,20 +39,21 @@ extension Routine {
         let sorted = recurrences.sorted()
         
         if sorted == [1,2,3,4,5,6,7] {
-            return "Everyday"
+            return String(localized: "Everyday")
         }
         
         if sorted == [2,3,4,5,6] {
-            return "Workdays"
+            return String(localized: "Workdays")
         }
         
         if sorted == [1,7] {
-            return "Weekends"
+            return String(localized: "Weekends")
         }
         
         let symbols = Calendar.current.shortWeekdaySymbols
+
         return sorted
-            .map { symbols[$0 - 1].prefix(3) }
+            .map { symbols[$0 - 1].capitalized }
             .joined(separator: " ")
     }
     
@@ -76,8 +77,8 @@ extension Routine {
                 guard triggerDate > Date() else { continue }
                 
                 let content = UNMutableNotificationContent()
-                content.title = "Routine \"\(name)\" due in one minute."
-                content.body = details.isEmpty ? "Open the app for details." : details
+                content.title = String(localized: .routineNotificationTitle(name: name))
+                content.body = details.isEmpty ? String(localized: .routineNotificationText) : details
                 content.sound = .default
                 
                 let identifier = "routine-\(id)-\(weekday)-\(weekOffset)"

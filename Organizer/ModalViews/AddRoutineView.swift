@@ -94,7 +94,7 @@ struct AddRoutineView: View {
                             toggleDay(day.rawValue)
                         } label: {
                             HStack {
-                                Text(String(describing: day).capitalized)
+                                Text(day.localizedName)
                                 .foregroundColor(.primary)
                                 
                                 Spacer()

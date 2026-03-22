@@ -59,7 +59,7 @@ struct EventRowView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(event.dueDate.formatted(.dateTime.hour().minute())) • \(event.recurrenceDescription)")
+                    Text("\(event.dueDate.formatted(.dateTime.hour().minute())) • \(event.recurrenceUnit.recurrenceDescription(recurrenceUnit: event.recurrenceUnit, recurrenceValue: event.recurrenceValue))")
                     .font(.subheadline)
                     .foregroundStyle(isOverdue ? Color(.red) : .secondary)
                     

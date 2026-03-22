@@ -93,13 +93,13 @@ struct EditRoutineView: View {
                             toggleDay(day.rawValue)
                         } label: {
                             HStack {
-                                Text(String(describing: day).capitalized)
-                                .foregroundColor(.primary)
+                                Text(day.localizedName)
+                                    .foregroundColor(.primary)
                                 
                                 Spacer()
                                 if routine.recurrences.contains(day.rawValue) {
                                     Image(systemName: "checkmark")
-                                    .foregroundColor(.accentColor)
+                                        .foregroundColor(.accentColor)
                                 }
                             }
                         }

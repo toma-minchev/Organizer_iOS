@@ -20,7 +20,11 @@ enum Weekday: Int, CaseIterable, Identifiable {
 
     var id: Int { rawValue }
     var shortLetter: String {
-        String(String(describing: self).prefix(1)).uppercased()
+        Calendar.current.shortWeekdaySymbols[self.rawValue - 1].capitalized
+    }
+    
+    var localizedName: String {
+        Calendar.current.weekdaySymbols[self.rawValue - 1].capitalized
     }
 }
 

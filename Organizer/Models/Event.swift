@@ -47,55 +47,6 @@ final class Event: TimelineEntry {
 
 
 extension Event {
-    func addToDueDate() {
-        if isCompleted && recurrenceValue > 0 {
-            let calendar = Calendar.current
-            
-            switch recurrenceUnit {
-                case .hour: dueDate = calendar.date(byAdding: .hour, value: recurrenceValue, to: dueDate)!
-                case .day: dueDate = calendar.date(byAdding: .day, value: recurrenceValue, to: dueDate)!
-                case .week: dueDate = calendar.date(byAdding: .weekOfYear, value: recurrenceValue, to: dueDate)!
-                case .month: dueDate = calendar.date(byAdding: .month, value: recurrenceValue, to: dueDate)!
-                case .year: dueDate = calendar.date(byAdding: .year, value: recurrenceValue, to: dueDate)!
-            }
-            
-            isCompleted = false
-        }
-    }
-    
-    var recurrenceDescription: String {
-        if recurrenceValue == 0 {
-            return "No repeat"
-        }
-
-        switch recurrenceUnit {
-            case .hour:
-                return recurrenceValue == 1
-                ? "Every hour"
-                : "Every \(recurrenceValue) hours"
-
-            case .day:
-                return recurrenceValue == 1
-                ? "Every day"
-                : "Every \(recurrenceValue) days"
-
-            case .week:
-                return recurrenceValue == 1
-                ? "Every week"
-                : "Every \(recurrenceValue) weeks"
-
-            case .month:
-                return recurrenceValue == 1
-                ? "Every month"
-                : "Every \(recurrenceValue) months"
-
-            case .year:
-                return recurrenceValue == 1
-                ? "Every year"
-                : "Every \(recurrenceValue) years"
-        }
-    }
-    
     func occurs(on date: Date) -> Bool {
         let calendar = Calendar.current
 
@@ -130,18 +81,20 @@ extension Event {
         }
     }
     
-    static func recurrenceRange(for unit: RecurrenceUnit) -> ClosedRange<Int> {
-        switch unit {
-            case .hour: return 1...23
-            case .day: return 1...6
-            case .week: return 1...3
-            case .month: return 1...11
-            case .year: return 1...10
+    func addToDueDate() {
+        if isCompleted && recurrenceValue > 0 {
+            let calendar = Calendar.current
+            
+            switch recurrenceUnit {
+                case .hour: dueDate = calendar.date(byAdding: .hour, value: recurrenceValue, to: dueDate)!
+                case .day: dueDate = calendar.date(byAdding: .day, value: recurrenceValue, to: dueDate)!
+                case .week: dueDate = calendar.date(byAdding: .weekOfYear, value: recurrenceValue, to: dueDate)!
+                case .month: dueDate = calendar.date(byAdding: .month, value: recurrenceValue, to: dueDate)!
+                case .year: dueDate = calendar.date(byAdding: .year, value: recurrenceValue, to: dueDate)!
+            }
+            
+            isCompleted = false
         }
-    }
-    
-    static func unitText(text: String, value: Int) -> String {
-        return "\(text.capitalized)\(value == 1 ? "" : "s")"
     }
     
     func scheduleNotification() {
@@ -151,8 +104,8 @@ extension Event {
         let center = UNUserNotificationCenter.current()
         
         let content = UNMutableNotificationContent()
-        content.title = "Event \"\(name)\" due in one minute."
-        content.body = details.count > 0 ? details : "Open the app for details."
+        content.title = String(localized: .eventNotificationTitle(name: name))
+        content.body = details.isEmpty ? String(localized: .eventNotificationText) : details
         content.sound = .default
         
         let trigger = UNCalendarNotificationTrigger(
@@ -178,5 +131,61 @@ extension Event {
     
     func deleteNotification () {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["event-\(self.id)"])
+    }
+}
+
+
+extension RecurrenceUnit {
+    func localizedLabel(value: Int) -> String {
+        switch self {
+            case .hour:  return value == 1 ? String(localized: "Hour")  : String(localized: "Hours")
+            case .day:   return value == 1 ? String(localized: "Day")   : String(localized: "Days")
+            case .week:  return value == 1 ? String(localized: "Week")  : String(localized: "Weeks")
+            case .month: return value == 1 ? String(localized: "Month") : String(localized: "Months")
+            case .year:  return value == 1 ? String(localized: "Year")  : String(localized: "Years")
+        }
+    }
+    
+    func recurrenceDescription(recurrenceUnit: RecurrenceUnit, recurrenceValue: Int) -> String {
+        if recurrenceValue == 0 {
+            return String(localized: "No repeat")
+        }
+
+        switch recurrenceUnit {
+            case .hour:
+                return recurrenceValue == 1
+                ? String(localized: "Every hour")
+                : String(localized: "Every \(recurrenceValue) hours")
+
+            case .day:
+                return recurrenceValue == 1
+                ? String(localized: "Every day")
+                : String(localized: "Every \(recurrenceValue) days")
+
+            case .week:
+                return recurrenceValue == 1
+                ? String(localized: "Every week")
+                : String(localized: "Every \(recurrenceValue) weeks")
+
+            case .month:
+                return recurrenceValue == 1
+                ? String(localized: "Every month")
+                : String(localized: "Every \(recurrenceValue) months")
+
+            case .year:
+                return recurrenceValue == 1
+                ? String(localized: "Every year")
+                : String(localized: "Every \(recurrenceValue) years")
+        }
+    }
+    
+    static func recurrenceRange(recurrenceUnit: RecurrenceUnit) -> ClosedRange<Int> {
+        switch recurrenceUnit {
+            case .hour: return 1...23
+            case .day: return 1...6
+            case .week: return 1...3
+            case .month: return 1...11
+            case .year: return 1...10
+        }
     }
 }

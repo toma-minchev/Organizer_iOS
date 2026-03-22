@@ -52,7 +52,7 @@ struct EditEventView: View {
                             Text("Every")
                             Spacer()
                             Menu {
-                                ForEach(Event.recurrenceRange(for: event.recurrenceUnit), id: \.self) { value in
+                                ForEach(RecurrenceUnit.recurrenceRange(recurrenceUnit: event.recurrenceUnit), id: \.self) { value in
                                     Button("\(value)") { event.recurrenceValue = value }
                                 }
                             } label: {
@@ -66,10 +66,10 @@ struct EditEventView: View {
 
                             Menu {
                                 ForEach(RecurrenceUnit.allCases, id: \.self) { unit in
-                                    Button(Event.unitText(text: unit.rawValue, value: event.recurrenceValue)) { event.recurrenceUnit = unit }
+                                    Button(unit.localizedLabel(value: event.recurrenceValue)) { event.recurrenceUnit = unit }
                                 }
                             } label: {
-                                Text(Event.unitText(text: event.recurrenceUnit.rawValue, value: event.recurrenceValue))
+                                Text(event.recurrenceUnit.localizedLabel(value: event.recurrenceValue))
                                 .foregroundColor(.primary)
                                 .padding(.horizontal, 13)
                                 .padding(.vertical, 8)
@@ -94,7 +94,7 @@ struct EditEventView: View {
             }
             .animation(.easeInOut(duration: 0.2), value: event.recurrenceValue > 0)
             .onChange(of: event.recurrenceUnit) {
-                event.recurrenceValue = min(event.recurrenceValue, Event.recurrenceRange(for: event.recurrenceUnit).upperBound)
+                event.recurrenceValue = min(event.recurrenceValue, RecurrenceUnit.recurrenceRange(recurrenceUnit: event.recurrenceUnit).upperBound)
                 event.scheduleNotification()
             }
             .onChange(of: event.recurrenceValue) {

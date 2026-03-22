@@ -79,7 +79,7 @@ struct AddEventView: View {
                             Text("Every")
                             Spacer()
                             Menu {
-                                ForEach(Event.recurrenceRange(for: recurrenceUnit), id: \.self) { value in
+                                ForEach(RecurrenceUnit.recurrenceRange(recurrenceUnit: recurrenceUnit), id: \.self) { value in
                                     Button("\(value)") { recurrenceValue = value }
                                 }
                             } label: {
@@ -93,10 +93,10 @@ struct AddEventView: View {
 
                             Menu {
                                 ForEach(RecurrenceUnit.allCases, id: \.self) { unit in
-                                    Button(Event.unitText(text: unit.rawValue, value: recurrenceValue)) { recurrenceUnit = unit }
+                                    Button(unit.localizedLabel(value: recurrenceValue)) { recurrenceUnit = unit }
                                 }
                             } label: {
-                                Text(Event.unitText(text: recurrenceUnit.rawValue, value: recurrenceValue))
+                                Text(recurrenceUnit.localizedLabel(value: recurrenceValue))
                                 .foregroundColor(.primary)
                                 .padding(.horizontal, 13)
                                 .padding(.vertical, 8)
@@ -129,7 +129,7 @@ struct AddEventView: View {
             }
             .animation(.easeInOut(duration: 0.2), value: recurrenceValue > 0)
             .onChange(of: recurrenceUnit) {
-                recurrenceValue = min(recurrenceValue, Event.recurrenceRange(for: recurrenceUnit).upperBound)
+                recurrenceValue = min(recurrenceValue, RecurrenceUnit.recurrenceRange(recurrenceUnit: recurrenceUnit).upperBound)
             }
         }
     }
