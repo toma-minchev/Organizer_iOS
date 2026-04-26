@@ -71,8 +71,12 @@ struct AddEventView: View {
                 Section("Repeat") {
                     Toggle("Repeat", isOn: Binding(
                         get: { recurrenceValue > 0 },
-                        set: { recurrenceValue = $0 ? 1 : 0 }
-                    ))
+                        set: { newValue in
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                recurrenceValue = newValue ? 1 : 0
+                            }
+                        }                    ))
+                    .sensoryFeedback(.impact(weight: .medium), trigger: recurrenceValue > 0)
 
                     if recurrenceValue > 0 {
                         HStack {
@@ -118,16 +122,20 @@ struct AddEventView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(role: .confirm) {
-                        saveEvent()
-                        dismiss()
+                    let isValid = !name.trimmingCharacters(in: .whitespaces).isEmpty
+                    Button {
+                        if isValid {
+                            saveEvent()
+                            dismiss()
+                        } else {
+                            UINotificationFeedbackGenerator().notificationOccurred(.error)
+                        }
                     } label: {
                         Image(systemName: "checkmark")
                     }
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .foregroundColor(isValid ? .accentColor : .gray)
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: recurrenceValue > 0)
             .onChange(of: recurrenceUnit) {
                 recurrenceValue = min(recurrenceValue, RecurrenceUnit.recurrenceRange(recurrenceUnit: recurrenceUnit).upperBound)
             }

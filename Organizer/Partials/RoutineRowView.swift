@@ -11,8 +11,6 @@ import SwiftData
 struct RoutineRowView: View {
     @Environment(\.modelContext) private var modelContext
     
-    @State private var showingEdit = false
-    
     let routine: Routine
     let selectedWeekday: Weekday
     let showActionButtons: Bool
@@ -29,6 +27,7 @@ struct RoutineRowView: View {
     private var isOverdue: Bool {dueTime < Date() && !isCompleted }
     
     private func handleCompletion() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         withAnimation {
             if isCompleted {
                 routine.completions.removeAll { $0 == selectedWeekday.id }
@@ -40,6 +39,7 @@ struct RoutineRowView: View {
     }
     
     private func handleDeletion() {
+        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         routine.deleteNotifications()
         modelContext.delete(routine)
     }
@@ -57,6 +57,8 @@ struct RoutineRowView: View {
                         Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
                             .font(.system(size: 22))
                     }
+                    .sensoryFeedback(.impact(weight: .medium), trigger: isCompleted)
+                    .sensoryFeedback(.impact(weight: .light), trigger: !isCompleted)
                     .foregroundColor(isCompleted ? .green : .secondary)
                     .buttonStyle(.borderless)
                     .transition(.move(edge: .leading).combined(with: .opacity))
@@ -89,14 +91,12 @@ struct RoutineRowView: View {
                         Image(systemName: "trash")
                             .font(.system(size: 22))
                     }
+                    .sensoryFeedback(.impact(weight: .medium), trigger: true)
                     .foregroundColor(.red)
                     .buttonStyle(.borderless)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
-        }
-        .navigationDestination(isPresented: $showingEdit) {
-            EditRoutineView(routine: routine, orderedWeekdays: orderedWeekdays, selectedWeekday: selectedWeekday)
         }
         .animation(.easeInOut(duration: 0.2), value: isCompleted)
         .animation(.easeInOut(duration: 0.2), value: showActionButtons)
@@ -115,12 +115,6 @@ struct RoutineRowView: View {
             }
         }
         .contextMenu {
-            Button {
-                showingEdit = true
-            } label: {
-                Label("Edit", systemImage: "pencil")
-            }
-            
             Button {
                 handleCompletion()
             } label: {

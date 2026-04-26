@@ -40,12 +40,18 @@ struct EditEventView: View {
                 
                 DatePicker("Due Date", selection: $event.dueDate)
                 Toggle("Completed", isOn: $event.isCompleted)
+                .sensoryFeedback(.impact(weight: .medium), trigger: event.isCompleted)
                 
                 Section("Repeat") {
                     Toggle("Repeat", isOn: Binding(
                         get: { event.recurrenceValue > 0 },
-                        set: { event.recurrenceValue = $0 ? 1 : 0 }
-                    ))
+                        set: { newValue in
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                event.recurrenceValue = newValue ? 1 : 0
+                            }
+                        }                    ))
+                    .sensoryFeedback(.impact(weight: .medium), trigger: event.recurrenceValue > 0)
+
 
                     if event.recurrenceValue > 0 {
                         HStack {
@@ -84,6 +90,7 @@ struct EditEventView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(role: .destructive) {
+                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                         event.deleteNotification()
                         modelContext.delete(event)
                         dismiss()
@@ -92,7 +99,6 @@ struct EditEventView: View {
                     }
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: event.recurrenceValue > 0)
             .onChange(of: event.recurrenceUnit) {
                 event.recurrenceValue = min(event.recurrenceValue, RecurrenceUnit.recurrenceRange(recurrenceUnit: event.recurrenceUnit).upperBound)
                 event.scheduleNotification()

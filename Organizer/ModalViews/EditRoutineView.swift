@@ -86,6 +86,8 @@ struct EditRoutineView: View {
                 
                 DatePicker("Complete By", selection: dueBinding, displayedComponents: .hourAndMinute)
                 Toggle("Completed", isOn: completedBinding)
+                    .sensoryFeedback(.impact(weight: .medium), trigger: routine.completions.contains(selectedWeekday.id))
+
                 
                 Section("Repeat") {
                     ForEach(orderedWeekdays) { day in
@@ -103,6 +105,7 @@ struct EditRoutineView: View {
                                 }
                             }
                         }
+                        .sensoryFeedback(.impact(weight: .medium), trigger: routine.recurrences.contains(day.rawValue))
                     }
                 }
             }
@@ -111,6 +114,7 @@ struct EditRoutineView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(role: .destructive) {
+                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                         routine.deleteNotifications()
                         modelContext.delete(routine)
                         dismiss()

@@ -104,6 +104,7 @@ struct AddRoutineView: View {
                                 }
                             }
                         }
+                        .sensoryFeedback(.impact(weight: .medium), trigger: selectedDays.contains(day.rawValue))
                     }
                 }
             }
@@ -119,16 +120,18 @@ struct AddRoutineView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(role: .confirm) {
-                        saveRoutine()
-                        dismiss()
+                    let isValid = !name.trimmingCharacters(in: .whitespaces).isEmpty && !selectedDays.isEmpty
+                    Button {
+                        if isValid {
+                            saveRoutine()
+                            dismiss()
+                        } else {
+                            UINotificationFeedbackGenerator().notificationOccurred(.error)
+                        }
                     } label: {
                         Image(systemName: "checkmark")
                     }
-                    .disabled(
-                        name.trimmingCharacters(in: .whitespaces).isEmpty ||
-                        selectedDays.isEmpty
-                    )
+                    .foregroundColor(isValid ? .accentColor : .gray)
                 }
             }
         }

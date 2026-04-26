@@ -11,14 +11,13 @@ import SwiftData
 struct EventRowView: View {
     @Environment(\.modelContext) private var modelContext
     
-    @State private var showingEdit = false
-    
     let event: Event
     let showActionButtons: Bool
     let selectedDate: Date
     private var isOverdue: Bool { event.dueDate < Date() && selectedDate < Date() && !event.isCompleted }
     
     private func handleCompletion() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         withAnimation {
             event.isCompleted.toggle()
         }
@@ -36,6 +35,7 @@ struct EventRowView: View {
     }
     
     private func handleDeletion() {
+        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         event.deleteNotification()
         modelContext.delete(event)
     }
@@ -53,6 +53,8 @@ struct EventRowView: View {
                         Image(systemName: event.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 22))
                     }
+                    .sensoryFeedback(.impact(weight: .medium), trigger: event.isCompleted)
+                    .sensoryFeedback(.impact(weight: .light), trigger: !event.isCompleted)
                     .foregroundColor(event.isCompleted ? .green : .secondary)
                     .buttonStyle(.borderless)
                     .transition(.move(edge: .leading).combined(with: .opacity))
@@ -85,14 +87,12 @@ struct EventRowView: View {
                         Image(systemName: "trash")
                         .font(.system(size: 22))
                     }
+                    .sensoryFeedback(.impact(weight: .medium), trigger: true)
                     .foregroundColor(.red)
                     .buttonStyle(.borderless)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
-        }
-        .navigationDestination(isPresented: $showingEdit) {
-            EditEventView(event: event)
         }
         .animation(.easeInOut(duration: 0.2), value: event.isCompleted)
         .animation(.easeInOut(duration: 0.2), value: showActionButtons)
@@ -112,12 +112,6 @@ struct EventRowView: View {
         }
         .contextMenu {
             Button {
-                showingEdit = true
-            } label: {
-                Label("Edit", systemImage: "pencil")
-            }
-            
-            Button {
                 handleCompletion()
             } label: {
                 Label(event.isCompleted ? "Undo" : "Done", systemImage: "checkmark")
@@ -135,3 +129,4 @@ struct EventRowView: View {
         }
     }
 }
+

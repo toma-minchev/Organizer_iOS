@@ -104,6 +104,7 @@ struct TimelineView: View {
                     .foregroundColor(showRoutines ? .accentColor : .primary)
                     .background(Capsule().fill(Color(.secondarySystemFill)))
                     .background(Capsule().fill(.regularMaterial))
+                    .sensoryFeedback(.impact(weight: .medium), trigger: showRoutines)
                 }
                 .padding(.horizontal)
                 .padding(.top, 7)
