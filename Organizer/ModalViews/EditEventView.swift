@@ -2,93 +2,159 @@
 //  EditEventView.swift
 //  Organizer
 //
-//  Created by Toma Minchev on 26.02.26.
-//
 
 import SwiftUI
 import SwiftData
 
+struct DraftEvent: Equatable {
+    var name: String
+    var details: String
+    var dueDate: Date
+    var recurrenceValue: Int
+    var recurrenceUnit: RecurrenceUnit
+}
 
 struct EditEventView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    
+
     @Bindable var event: Event
+
+    @State private var draft: DraftEvent
+    private let snapshot: DraftEvent
+
+    init(event: Event) {
+        self.event = event
+        let snap = DraftEvent(
+            name: event.name,
+            details: event.details,
+            dueDate: event.dueDate,
+            recurrenceValue: event.recurrenceValue,
+            recurrenceUnit: event.recurrenceUnit
+        )
+        _draft = State(initialValue: snap)
+        self.snapshot = snap
+    }
+
+    @State private var isDirty: Bool = false
+
+    private var isNameValid: Bool {
+        !draft.name.trimmingCharacters(in: .whitespaces).isEmpty
+    }
     
+    private func applyChanges() {
+        event.name = draft.name
+        event.details = draft.details
+        event.dueDate = draft.dueDate
+        event.recurrenceValue = draft.recurrenceValue
+        event.recurrenceUnit = draft.recurrenceUnit
+        
+        event.scheduleNotification()
+    }
+
     
     var body: some View {
-        NavigationStack {
-            Form {
-                TextField("Name", text: $event.name)
-                .bold(true)
+        Form {
+            TextField("Name", text: $draft.name)
+                .bold()
                 .padding(.top, 6)
                 .padding(.horizontal, 6)
-                
-                ZStack(alignment: .topLeading) {
-                    if event.details.isEmpty {
-                        Text("Details")
+
+            ZStack(alignment: .topLeading) {
+                if draft.details.isEmpty {
+                    Text("Details")
                         .foregroundColor(.secondary)
                         .padding(.top, 6)
                         .padding(.horizontal, 6)
                         .bold()
-                    }
+                }
 
-                    TextEditor(text: $event.details)
+                TextEditor(text: $draft.details)
                     .frame(minHeight: 120)
                     .frame(maxHeight: 300)
-                }
-                
-                DatePicker("Due Date", selection: $event.dueDate)
-                Toggle("Completed", isOn: $event.isCompleted)
-                .sensoryFeedback(.impact(weight: .medium), trigger: event.isCompleted)
-                
-                Section("Repeat") {
-                    Toggle("Repeat", isOn: Binding(
-                        get: { event.recurrenceValue > 0 },
-                        set: { newValue in
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                event.recurrenceValue = newValue ? 1 : 0
+            }
+
+            DatePicker("Due Date", selection: $draft.dueDate)
+
+            Toggle("Completed", isOn: $event.isCompleted)
+            .sensoryFeedback(.impact(weight: .medium), trigger: event.isCompleted)
+
+            Section("Repeat") {
+                Toggle("Repeat", isOn: Binding(
+                    get: { draft.recurrenceValue > 0 },
+                    set: { newValue in
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            draft.recurrenceValue = newValue ? 1 : 0
+                        }
+                    }
+                ))
+                .sensoryFeedback(.impact(weight: .medium), trigger: draft.recurrenceValue > 0)
+
+                if draft.recurrenceValue > 0 {
+                    HStack {
+                        Text("Every")
+                        Spacer()
+
+                        Menu {
+                            ForEach(RecurrenceUnit.recurrenceRange(recurrenceUnit: draft.recurrenceUnit), id: \.self ) { value in
+                                Button("\(value)") { draft.recurrenceValue = value }
                             }
-                        }                    ))
-                    .sensoryFeedback(.impact(weight: .medium), trigger: event.recurrenceValue > 0)
-
-
-                    if event.recurrenceValue > 0 {
-                        HStack {
-                            Text("Every")
-                            Spacer()
-                            Menu {
-                                ForEach(RecurrenceUnit.recurrenceRange(recurrenceUnit: event.recurrenceUnit), id: \.self) { value in
-                                    Button("\(value)") { event.recurrenceValue = value }
+                        } label: {
+                            Text("\(draft.recurrenceValue)")
+                            .frame(minWidth: 20)
+                            .foregroundColor(.primary)
+                            .padding(.horizontal, 13)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(Color(.secondarySystemFill)))
+                        }
+                        
+                        Menu {
+                            ForEach(RecurrenceUnit.allCases, id: \.self) { unit in
+                                Button(unit.localizedLabel(value: draft.recurrenceValue)) {
+                                    draft.recurrenceUnit = unit
                                 }
-                            } label: {
-                                Text("\(event.recurrenceValue)")
-                                .frame(minWidth: 20)
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 13)
-                                .padding(.vertical, 8)
-                                .background(Capsule().fill(Color(.secondarySystemFill)))
                             }
-
-                            Menu {
-                                ForEach(RecurrenceUnit.allCases, id: \.self) { unit in
-                                    Button(unit.localizedLabel(value: event.recurrenceValue)) { event.recurrenceUnit = unit }
-                                }
-                            } label: {
-                                Text(event.recurrenceUnit.localizedLabel(value: event.recurrenceValue))
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 13)
-                                .padding(.vertical, 8)
-                                .background(Capsule().fill(Color(.secondarySystemFill)))
-                            }
+                        } label: {
+                            Text(draft.recurrenceUnit.localizedLabel(value: draft.recurrenceValue))
+                            .foregroundColor(.primary)
+                            .padding(.horizontal, 13)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(Color(.secondarySystemFill)))
                         }
                     }
                 }
             }
-            .navigationTitle("Edit Event")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+        }
+        .navigationTitle("Edit Event")
+        .navigationBarTitleDisplayMode(.inline)
+        .interactiveDismissDisabled(isDirty)
+        .navigationBarBackButtonHidden(isDirty)
+        .toolbar(.hidden, for: .tabBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                if isDirty {
+                    Button("Cancel") {
+                        draft = snapshot
+                        dismiss()
+                    }
+                }
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                if isDirty {
+                    Button {
+                        if isNameValid {
+                            applyChanges()
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
+                            dismiss()
+                        } else {
+                            UINotificationFeedbackGenerator().notificationOccurred(.error)
+                        }
+                    } label: {
+                        Image(systemName: "checkmark")
+                    }
+                    .foregroundColor(isNameValid ? .accentColor : .gray)
+                } else {
                     Button(role: .destructive) {
                         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                         event.deleteNotification()
@@ -99,27 +165,10 @@ struct EditEventView: View {
                     }
                 }
             }
-            .onChange(of: event.recurrenceUnit) {
-                event.recurrenceValue = min(event.recurrenceValue, RecurrenceUnit.recurrenceRange(recurrenceUnit: event.recurrenceUnit).upperBound)
-                event.scheduleNotification()
-            }
-            .onChange(of: event.recurrenceValue) {
-                event.scheduleNotification()
-            }
-            .onChange(of: event.dueDate) {
-                event.scheduleNotification()
-            }
-            .onChange(of: event.isCompleted) {
-                if event.isCompleted {
-                    if event.recurrenceValue > 0 {
-                        event.addToDueDate()
-                        event.scheduleNotification()
-                    } else {
-                        event.deleteNotification()
-                    }
-                } else {
-                    event.scheduleNotification()
-                }
+        }
+        .onChange(of: draft) {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isDirty = draft != snapshot
             }
         }
     }

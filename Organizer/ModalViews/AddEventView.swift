@@ -125,6 +125,7 @@ struct AddEventView: View {
                     let isValid = !name.trimmingCharacters(in: .whitespaces).isEmpty
                     Button {
                         if isValid {
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
                             saveEvent()
                             dismiss()
                         } else {

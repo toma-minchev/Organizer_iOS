@@ -100,20 +100,6 @@ struct RoutineRowView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: isCompleted)
         .animation(.easeInOut(duration: 0.2), value: showActionButtons)
-        .swipeActions(edge: .trailing) {
-            Button {
-                handleCompletion()
-            } label: {
-                Label(isCompleted ? "Undo" : "Done", systemImage: "checkmark")
-            }
-            .tint(isCompleted ? .secondary : .blue)
-            
-            Button(role: .destructive) {
-                handleDeletion()
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        }
         .contextMenu {
             Button {
                 handleCompletion()

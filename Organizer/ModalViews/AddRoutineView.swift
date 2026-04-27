@@ -123,6 +123,7 @@ struct AddRoutineView: View {
                     let isValid = !name.trimmingCharacters(in: .whitespaces).isEmpty && !selectedDays.isEmpty
                     Button {
                         if isValid {
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
                             saveRoutine()
                             dismiss()
                         } else {

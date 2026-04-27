@@ -96,20 +96,6 @@ struct EventRowView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: event.isCompleted)
         .animation(.easeInOut(duration: 0.2), value: showActionButtons)
-        .swipeActions(edge: .trailing) {
-            Button {
-                handleCompletion()
-            } label: {
-                Label(event.isCompleted ? "Undo" : "Done", systemImage: "checkmark")
-            }
-            .tint(event.isCompleted ? .secondary : .blue)
-            
-            Button(role: .destructive) {
-                handleDeletion()
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        }
         .contextMenu {
             Button {
                 handleCompletion()

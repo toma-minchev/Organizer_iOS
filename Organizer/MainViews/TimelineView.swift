@@ -24,7 +24,7 @@ struct TimelineView: View {
     @State private var slideDirection: Edge = .trailing
     @State private var showingAddEvent = false
     @State private var showActionButtons = false
-    @State private var showRoutines = true
+    @AppStorage("showRoutines") private var showRoutines = true
     @State private var selectedDate = Date()
     
     private var selectedWeekday: Int { Calendar.current.component(.weekday, from: selectedDate) }
@@ -53,9 +53,10 @@ struct TimelineView: View {
                         }
                     }
                     .id(selectedDate)
-                    .contentMargins(.top, 50)
+                    .contentMargins(.top, 52)
                     .transition(.opacity)
-                    .animation(.easeInOut(duration: 0.2), value: timelineItems.count)
+                    .animation(.easeInOut(duration: 0.2), value: showRoutines)
+                    .animation(.easeInOut(duration: 0.2), value: selectedDate)
                     .gesture(
                         DragGesture(minimumDistance: 50, coordinateSpace: .local)
                         .onEnded { value in
@@ -97,7 +98,7 @@ struct TimelineView: View {
                     
                     Spacer()
                     
-                    Toggle(isOn: $showRoutines.animation(.easeInOut(duration: 0.2))) {
+                    Toggle(isOn: $showRoutines) {
                         Image(systemName: "repeat")
                     }
                     .toggleStyle(.button)

@@ -123,7 +123,7 @@ struct RoutineView: View {
                     .id(selectedWeekday)
                     .contentMargins(.top, 50)
                     .transition(.opacity)
-                    .animation(.easeInOut(duration: 0.2), value: filteredRoutines.count)
+                    .animation(.easeInOut(duration: 0.2), value: filteredRoutines)
                     .gesture(
                         DragGesture(minimumDistance: 50, coordinateSpace: .local)
                         .onEnded { value in
