@@ -8,15 +8,42 @@
 import Foundation
 import SwiftData
 import UserNotifications
+import SwiftUI
 
+
+enum Priority: Int, CaseIterable, Identifiable, Codable {
+    case low = 0
+    case medium = 1
+    case high = 2
+
+    var id: Int { rawValue }
+    
+    var title: String {
+        switch self {
+        case .low:    return String(localized: "Low")
+        case .medium: return String(localized: "Medium")
+        case .high:   return String(localized: "High")
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .low:    return .secondary
+        case .medium: return .yellow
+        case .high:   return .red
+        }
+    }
+}
 
 enum RecurrenceUnit: String, CaseIterable, Codable {
+    case minute
     case hour
     case day
     case week
     case month
     case year
 }
+
 
 @Model
 final class Event: TimelineEntry {
@@ -30,16 +57,24 @@ final class Event: TimelineEntry {
     var details: String
     var dueDate: Date
     var creationDate: Date
+    var priority: Priority
     var isCompleted: Bool
+    var notify: Bool
+    var notifyOffsetValue: Int
+    var notifyOffsetUnit: RecurrenceUnit
     var recurrenceValue: Int
     var recurrenceUnit: RecurrenceUnit
     
-    init(name: String, details: String, dueDate: Date, creationDate: Date, isCompleted: Bool, recurrenceValue: Int, recurrenceUnit: RecurrenceUnit) {
+    init(name: String, details: String, dueDate: Date, creationDate: Date, priority: Priority, isCompleted: Bool, notify: Bool, notifyOffsetValue: Int, notifyOffsetUnit: RecurrenceUnit, recurrenceValue: Int, recurrenceUnit: RecurrenceUnit) {
         self.name = name
         self.details = details
         self.dueDate = dueDate
         self.creationDate = creationDate
+        self.priority = priority
         self.isCompleted = isCompleted
+        self.notify = notify
+        self.notifyOffsetValue = notifyOffsetValue
+        self.notifyOffsetUnit = notifyOffsetUnit
         self.recurrenceValue = recurrenceValue
         self.recurrenceUnit = recurrenceUnit
     }
@@ -58,6 +93,8 @@ extension Event {
         guard date >= creationDate else { return false }
 
         switch recurrenceUnit {
+            case .minute:
+                return true
             case .hour:
                 return true
             case .day:
@@ -86,6 +123,7 @@ extension Event {
             let calendar = Calendar.current
             
             switch recurrenceUnit {
+                case .minute: dueDate = calendar.date(byAdding: .minute, value: recurrenceValue, to: dueDate)!
                 case .hour: dueDate = calendar.date(byAdding: .hour, value: recurrenceValue, to: dueDate)!
                 case .day: dueDate = calendar.date(byAdding: .day, value: recurrenceValue, to: dueDate)!
                 case .week: dueDate = calendar.date(byAdding: .weekOfYear, value: recurrenceValue, to: dueDate)!
@@ -97,17 +135,36 @@ extension Event {
         }
     }
     
+    func notifyOffsetLabel() -> String {
+        notifyOffsetUnit.localizedLabel(value: notifyOffsetValue)
+    }
+    
     func scheduleNotification() {
-        let triggerDate = dueDate.addingTimeInterval(-60)
+        guard notify else {
+            deleteNotification()
+            return
+        }
+
+        let offsetSeconds: Double
+        switch notifyOffsetUnit {
+        case .minute: offsetSeconds = Double(notifyOffsetValue) * 60
+        case .hour:   offsetSeconds = Double(notifyOffsetValue) * 3600
+        case .day:    offsetSeconds = Double(notifyOffsetValue) * 86400
+        case .week:   offsetSeconds = Double(notifyOffsetValue) * 604800
+        case .month:  offsetSeconds = Double(notifyOffsetValue) * 2592000
+        case .year:   offsetSeconds = Double(notifyOffsetValue) * 31536000
+        }
+
+        let triggerDate = dueDate.addingTimeInterval(-offsetSeconds)
         guard triggerDate > Date() else { return }
-        
+
         let center = UNUserNotificationCenter.current()
-        
         let content = UNMutableNotificationContent()
-        content.title = String(localized: .eventNotificationTitle(name: name))
-        content.body = details.isEmpty ? String(localized: .eventNotificationText) : details
+        let details = details.isEmpty ? String(localized: .notificationDefaultText) : details
+        content.title = String(name)
+        content.body = notifyOffsetValue > 0 ? String(localized: .eventNotificationText(dueTime: notifyOffsetLabel())) : details
         content.sound = .default
-        
+
         let trigger = UNCalendarNotificationTrigger(
             dateMatching: Calendar.current.dateComponents(
                 [.year, .month, .day, .hour, .minute],
@@ -115,13 +172,13 @@ extension Event {
             ),
             repeats: false
         )
-        
+
         let request = UNNotificationRequest(
             identifier: "event-\(self.id)",
             content: content,
             trigger: trigger
         )
-        
+
         center.add(request) { error in
             if let error {
                 print("Notification scheduling failed:", error)
@@ -138,6 +195,7 @@ extension Event {
 extension RecurrenceUnit {
     func localizedLabel(value: Int) -> String {
         switch self {
+            case .minute: return value == 1 ? String(localized: "Minute") : String(localized: "Minutes")
             case .hour:  return value == 1 ? String(localized: "Hour")  : String(localized: "Hours")
             case .day:   return value == 1 ? String(localized: "Day")   : String(localized: "Days")
             case .week:  return value == 1 ? String(localized: "Week")  : String(localized: "Weeks")
@@ -152,6 +210,11 @@ extension RecurrenceUnit {
         }
 
         switch recurrenceUnit {
+            case .minute:
+                return recurrenceValue == 1
+                ? String(localized: "Every miunte")
+                : String(localized: "Every \(recurrenceValue) minutes")
+            
             case .hour:
                 return recurrenceValue == 1
                 ? String(localized: "Every hour")
@@ -181,6 +244,7 @@ extension RecurrenceUnit {
     
     static func recurrenceRange(recurrenceUnit: RecurrenceUnit) -> ClosedRange<Int> {
         switch recurrenceUnit {
+            case .minute: return 1...59
             case .hour: return 1...23
             case .day: return 1...6
             case .week: return 1...3

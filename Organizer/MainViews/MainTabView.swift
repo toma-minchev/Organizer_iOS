@@ -9,22 +9,22 @@ import SwiftData
 
 
 struct MainTabView: View {
+    @State private var selectedTab: Int = 0
+
     var body: some View {
-        TabView() {
-            TimelineView()
+        TabView(selection: $selectedTab) {
+            TimelineView(selectedTab: selectedTab)
             .tabItem {
                 Label("Timeline", systemImage: "list.bullet")
             }
+            .tag(0)
 
-            RoutineView()
+            RoutineView(selectedTab: selectedTab)
             .tabItem {
                 Label("Routine", systemImage: "repeat")
             }
+            .tag(1)
         }
     }
-}
-
-#Preview {
-    MainTabView()
 }
 

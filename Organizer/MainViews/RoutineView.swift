@@ -37,10 +37,13 @@ struct RoutineView: View {
     @State private var slideDirection: Edge = .trailing
     @State private var showingAddRoutine = false
     @State private var showActionButtons = false
+    @State private var routineToDuplicate: Routine? = nil
     @State private var selectedWeekday: Weekday = {
         let weekday = Calendar.current.component(.weekday, from: Date())
         return Weekday(rawValue: weekday)!
     }()
+    
+    let selectedTab: Int
     
     @AppStorage("lastWeekNumber") private var lastWeekNumber: Int = 0
     private var currentWeekNumber: Int {
@@ -112,12 +115,11 @@ struct RoutineView: View {
                 ZStack {
                     List {
                         ForEach(filteredRoutines) { routine in
-                            RoutineRowView(
-                                routine: routine,
-                                selectedWeekday: selectedWeekday,
-                                showActionButtons: showActionButtons,
-                                orderedWeekdays: orderedWeekdays
-                            )
+                            RoutineRowView(routine: routine, selectedWeekday: selectedWeekday, showActionButtons: showActionButtons, orderedWeekdays: orderedWeekdays, selectedTab: selectedTab,
+                                onDuplicate: { routine in
+                                routineToDuplicate = routine
+                                showingAddRoutine = true
+                            })
                         }
                     }
                     .id(selectedWeekday)
@@ -196,8 +198,10 @@ struct RoutineView: View {
             .onDisappear {
                 showActionButtons = false
             }
-            .sheet(isPresented: $showingAddRoutine) {
-                AddRoutineView(orderedWeekdays: orderedWeekdays)
+            .sheet(isPresented: $showingAddRoutine, onDismiss: {
+                routineToDuplicate = nil
+            }) {
+                AddRoutineView(orderedWeekdays: orderedWeekdays, duplicatedRoutine: routineToDuplicate )
             }
             .task {
                 schedulePausedNotificationsReminder()
@@ -225,7 +229,10 @@ struct RoutineView: View {
                 dueHour: template.hour,
                 dueMinute: template.minute,
                 completions: [],
-                recurrences: template.days
+                recurrences: template.days,
+                notify: false,
+                notifyOffsetValue: 0,
+                notifyOffsetUnit: .minute,
             )
             
             modelContext.insert(routine)

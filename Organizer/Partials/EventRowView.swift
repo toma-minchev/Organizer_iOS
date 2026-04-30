@@ -11,9 +11,14 @@ import SwiftData
 struct EventRowView: View {
     @Environment(\.modelContext) private var modelContext
     
+    @State private var showDeleteConfirmation = false
+    
     let event: Event
+    let showRoutines: Bool
     let showActionButtons: Bool
     let selectedDate: Date
+    let selectedTab: Int
+    let onDuplicate: (Event) -> Void
     private var isOverdue: Bool { event.dueDate < Date() && selectedDate < Date() && !event.isCompleted }
     
     private func handleCompletion() {
@@ -35,6 +40,7 @@ struct EventRowView: View {
     }
     
     private func handleDeletion() {
+        showDeleteConfirmation = false
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         event.deleteNotification()
         modelContext.delete(event)
@@ -50,9 +56,10 @@ struct EventRowView: View {
                     Button {
                         handleCompletion()
                     } label: {
-                        Image(systemName: event.isCompleted ? "checkmark.circle.fill" : "circle")
+                        Image(systemName: event.isCompleted ? "checkmark.circle.fill" : "checkmark.circle")
                         .font(.system(size: 22))
                     }
+                    .padding(.trailing, 6)
                     .sensoryFeedback(.impact(weight: .medium), trigger: event.isCompleted)
                     .sensoryFeedback(.impact(weight: .light), trigger: !event.isCompleted)
                     .foregroundColor(event.isCompleted ? .green : .secondary)
@@ -61,9 +68,29 @@ struct EventRowView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(event.dueDate.formatted(.dateTime.hour().minute())) • \(event.recurrenceUnit.recurrenceDescription(recurrenceUnit: event.recurrenceUnit, recurrenceValue: event.recurrenceValue))")
-                    .font(.subheadline)
-                    .foregroundStyle(isOverdue ? Color(.red) : .secondary)
+                    HStack(alignment: .top, spacing: 8) {
+                        if selectedTab == 0 {
+                            if showRoutines {
+                                Image(systemName: "list.bullet")
+                                .font(.subheadline)
+                                .foregroundStyle(event.priority.color)
+                                .padding(.top, 2)
+                            } else {
+                                Image(systemName: "circlebadge.fill")
+                                .font(.system(size: 10))
+                                .foregroundStyle(event.priority.color)
+                                .padding(.top, 5)
+                            }
+                        }
+
+                        Text("\(event.dueDate.formatted(.dateTime.hour().minute()))")
+                        .font(.subheadline)
+                        .foregroundStyle(isOverdue ? Color(.red) : .secondary)
+
+                        Text("\(event.recurrenceUnit.recurrenceDescription(recurrenceUnit: event.recurrenceUnit, recurrenceValue: event.recurrenceValue))")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    }
                     
                     Text(event.name)
                     .lineLimit(1)
@@ -75,6 +102,7 @@ struct EventRowView: View {
                         Text(event.details)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                        .transition(.scale(scale: 0.95).combined(with: .opacity))
                     }
                 }
                 
@@ -82,7 +110,7 @@ struct EventRowView: View {
                 
                 if showActionButtons {
                     Button(role: .destructive) {
-                        handleDeletion()
+                        showDeleteConfirmation = true
                     } label: {
                         Image(systemName: "trash")
                         .font(.system(size: 22))
@@ -91,6 +119,34 @@ struct EventRowView: View {
                     .foregroundColor(.red)
                     .buttonStyle(.borderless)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .popover(isPresented: $showDeleteConfirmation) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Delete Event?")
+                                .font(.headline)
+                                
+                                Text("This action cannot be undone.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.top, 8)
+                            
+                            Button {
+                                handleDeletion()
+                            } label: {
+                                Text("Delete Event")
+                                .foregroundColor(.red)
+                                .frame(maxWidth: .infinity)
+                            }
+                            .padding(14)
+                            .background(Capsule().fill(.ultraThinMaterial))
+                        }
+                        .padding(14)
+                        .frame(width: 200)
+                        .presentationCompactAdaptation(.popover)
+                    }
                 }
             }
         }
@@ -103,8 +159,20 @@ struct EventRowView: View {
                 Label(event.isCompleted ? "Undo" : "Done", systemImage: "checkmark")
             }
             
-            Button(role: .destructive) {
-                handleDeletion()
+            Button {
+                onDuplicate(event)
+            } label: {
+                Label("Duplicate", systemImage: "doc.on.doc")
+            }
+            
+            Menu {
+                Section("This action cannot be undone.") {
+                    Button(role: .destructive) {
+                        handleDeletion()
+                    } label: {
+                        Label("Delete Event", systemImage: "trash")
+                    }
+                }
             } label: {
                 Label("Delete", systemImage: "trash")
             }
@@ -115,4 +183,3 @@ struct EventRowView: View {
         }
     }
 }
-

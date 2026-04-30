@@ -14,6 +14,24 @@ protocol TimelineEntry {
     var persistentModelID: PersistentIdentifier { get }
 }
 
+enum TimePeriod: String, CaseIterable {
+    case morning = "Morning"
+    case midday = "Midday"
+    case afternoon = "Afternoon"
+    case evening = "Evening"
+    case night = "Night"
+
+    var range: Range<Int> {
+        switch self {
+        case .morning: return 0 ..<  9 * 3600
+        case .midday: return 9*3600 ..<  12 * 3600
+        case .afternoon: return 12*3600 ..<  17 * 3600
+        case .evening: return 17*3600 ..<  20 * 3600
+        case .night: return 20*3600 ..< 24 * 3600
+        }
+    }
+}
+
 
 struct TimelineView: View {
     @Environment(\.modelContext) private var modelContext
@@ -21,18 +39,54 @@ struct TimelineView: View {
     @Query(sort: [SortDescriptor(\Event.dueDate)]) private var events: [Event]
     @Query(sort: [SortDescriptor(\Routine.dueHour), SortDescriptor(\Routine.dueMinute)]) private var routines: [Routine]
     
+    @State private var collapsedGroups: Set<String> = []
     @State private var slideDirection: Edge = .trailing
     @State private var showingAddEvent = false
+    @State private var showDatePicker = false
+    @State private var showingAddRoutine = false
     @State private var showActionButtons = false
-    @AppStorage("showRoutines") private var showRoutines = true
     @State private var selectedDate = Date()
+    @State private var eventToDuplicate: Event? = nil
+    @State private var routineToDuplicate: Routine? = nil
     
+    @AppStorage("showPeriods") private var showPeriods: Bool = true
+    @AppStorage("showRoutines") private var showRoutines = true
+    @AppStorage("sortByPriority") private var sortByPriority: Bool = false
+    
+    let selectedTab: Int
+    
+    var orderedWeekdays: [Weekday] { Weekday.allCases }
     private var selectedWeekday: Int { Calendar.current.component(.weekday, from: selectedDate) }
     private var filteredRoutines: [Routine] { routines.filter { $0.recurrences.contains(selectedWeekday) } }
     private var filteredEvents: [Event] { events.filter { $0.occurs(on: selectedDate) } }
     private var timelineItems: [any TimelineEntry] {
-        (filteredEvents as [any TimelineEntry] + filteredRoutines as [any TimelineEntry])
-        .sorted { ($0.secondsFromMidnight, $0 is Routine ? 1 : 0) < ($1.secondsFromMidnight, $1 is Routine ? 1 : 0)}
+        let combined: [any TimelineEntry] = filteredEvents + filteredRoutines
+        return combined.sorted { a, b in
+            if a.secondsFromMidnight != b.secondsFromMidnight {
+                return a.secondsFromMidnight < b.secondsFromMidnight
+            }
+            return (a is Routine ? 1 : 0) < (b is Routine ? 1 : 0)
+        }
+    }
+    
+    private var groupedTimelineItems: [(name: String, items: [any TimelineEntry])] {
+        TimePeriod.allCases.compactMap { period -> (name: String, items: [any TimelineEntry])? in
+            let items: [any TimelineEntry] = timelineItems.filter { period.range.contains($0.secondsFromMidnight) }
+            guard !items.isEmpty else { return nil }
+            return (period.rawValue, items)
+        }
+    }
+
+    private var groupedByPriority: [(name: String, items: [any TimelineEntry])] {
+        Priority.allCases.reversed().compactMap { priority -> (name: String, items: [any TimelineEntry])? in
+            let items: [any TimelineEntry] = timelineItems.filter { ($0 as? Event)?.priority == priority }
+            guard !items.isEmpty else { return nil }
+            return (priority.title, items)
+        }
+    }
+
+    private var activeGroups: [(name: String, items: [any TimelineEntry])] {
+        sortByPriority ? groupedByPriority : groupedTimelineItems
     }
     
     
@@ -41,24 +95,53 @@ struct TimelineView: View {
             ZStack(alignment: .top) {
                 ZStack {
                     List {
-                        ForEach(timelineItems, id: \.persistentModelID) { item in
-                            if let event = item as? Event {
-                                EventRowView(event: event, showActionButtons: showActionButtons, selectedDate: selectedDate)
+                        if showPeriods {
+                            ForEach(activeGroups, id: \.name) { group in
+                                Section {
+                                    if !collapsedGroups.contains(group.name) {
+                                        ForEach(group.items, id: \.persistentModelID) {
+                                            rowView(for: $0)
+                                        }
+                                        .transition(.opacity.combined(with: .move(edge: .top)))
+                                    }
+                                } header: {
+                                    Button {
+                                        withAnimation(.easeInOut(duration: 0.25)) {
+                                            if collapsedGroups.contains(group.name) {
+                                                collapsedGroups.remove(group.name)
+                                            } else {
+                                                collapsedGroups.insert(group.name)
+                                            }
+                                        }
+                                    } label: {
+                                        HStack {
+                                            Text(group.name)
+                                            Spacer()
+                                            Image(systemName: "chevron.down")
+                                            .rotationEffect(collapsedGroups.contains(group.name) ? .degrees(-90) : .degrees(0))
+                                            .animation(.easeInOut(duration: 0.25), value: collapsedGroups)
+                                        }
+                                        .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
                             }
-                            
-                            if showRoutines, let routine = item as? Routine {
-                                RoutineRowView( routine: routine, selectedWeekday: Weekday(rawValue: selectedWeekday)!, showActionButtons: showActionButtons, orderedWeekdays: Weekday.allCases
-                                )
+                        }
+                        
+                        if !showPeriods {
+                            ForEach(timelineItems, id: \.persistentModelID) {
+                                rowView(for: $0)
                             }
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                         }
                     }
                     .id(selectedDate)
-                    .contentMargins(.top, 52)
+                    .contentMargins(.top, 50)
                     .transition(.opacity)
                     .animation(.easeInOut(duration: 0.2), value: showRoutines)
+                    .animation(.easeInOut(duration: 0.4), value: showPeriods)
                     .animation(.easeInOut(duration: 0.2), value: selectedDate)
-                    .gesture(
-                        DragGesture(minimumDistance: 50, coordinateSpace: .local)
+                    .gesture(DragGesture(minimumDistance: 50, coordinateSpace: .local)
                         .onEnded { value in
                             if value.translation.width < 0 {
                                 slideDirection = .trailing
@@ -91,22 +174,66 @@ struct TimelineView: View {
                 }
                 
                 HStack {
-                    DatePicker("", selection: $selectedDate, displayedComponents: .date)
-                    .background(Capsule().fill(.regularMaterial))
-                    .labelsHidden()
-                    .datePickerStyle(.compact)
-                    
-                    Spacer()
-                    
-                    Toggle(isOn: $showRoutines) {
-                        Image(systemName: "repeat")
+                    HStack(spacing: 8) {
+                        Button {
+                            showDatePicker = true
+                        } label: {
+                            Text(selectedDate.formatted(date: .abbreviated, time: .omitted))
+                                .foregroundColor(.primary)
+                                .frame(maxHeight: .infinity)
+                                .padding(.horizontal, 10)
+                                .background(Capsule().fill(Color(.tertiarySystemBackground)))
+                        }
+                        .frame(maxHeight: 26)
+                        .popover(isPresented: $showDatePicker) {
+                            DatePicker("", selection: $selectedDate, displayedComponents: .date)
+                            .datePickerStyle(.graphical)
+                            .presentationCompactAdaptation(.popover)
+                            .frame(width: 320)
+                            .padding(.horizontal, 10)
+                        }
+                        
+                        Spacer()
+                        
+                        if showPeriods {
+                            Button {
+                                sortByPriority.toggle()
+                            } label: {
+                                Image(systemName: "flag")
+                                    .foregroundColor(sortByPriority ? .white : .primary)
+                                    .frame(width: 50)
+                                    .frame(maxHeight: 26)
+                                    .background(Capsule().fill(sortByPriority ? Color.accentColor : Color(.tertiarySystemBackground)))
+                            }
+                            .sensoryFeedback(.impact(weight: .medium), trigger: sortByPriority)
+                        }
+
+                        Button {
+                            showPeriods.toggle()
+                        } label: {
+                            Image(systemName: "list.bullet.indent")
+                                .foregroundColor(showPeriods ? .white : .primary)
+                                .frame(width: 50)
+                                .frame(maxHeight: 26)
+                                .background(Capsule().fill(showPeriods ? Color.accentColor : Color(.tertiarySystemBackground)))
+                        }
+                        .sensoryFeedback(.impact(weight: .medium), trigger: showPeriods)
+
+                        Button {
+                            showRoutines.toggle()
+                        } label: {
+                            Image(systemName: "repeat")
+                                .foregroundColor(showRoutines ? .white : .primary)
+                                .frame(width: 50)
+                                .frame(maxHeight: 26)
+                                .background(Capsule().fill(showRoutines ? Color.accentColor : Color(.tertiarySystemBackground)))
+                        }
+                        .sensoryFeedback(.impact(weight: .medium), trigger: showRoutines)
                     }
-                    .toggleStyle(.button)
-                    .foregroundColor(showRoutines ? .accentColor : .primary)
-                    .background(Capsule().fill(Color(.secondarySystemFill)))
-                    .background(Capsule().fill(.regularMaterial))
-                    .sensoryFeedback(.impact(weight: .medium), trigger: showRoutines)
+                    .padding(3)
                 }
+                .background(Capsule().fill(Color(.secondarySystemFill)))
+                .background(Capsule().fill(.regularMaterial))
                 .padding(.horizontal)
                 .padding(.top, 7)
                 .zIndex(1)
@@ -143,12 +270,45 @@ struct TimelineView: View {
             .onDisappear {
                 showActionButtons = false
             }
-            .sheet(isPresented: $showingAddEvent) {
-                AddEventView(selectedDate: selectedDate)
+            .sheet(isPresented: $showingAddEvent, onDismiss: {
+                eventToDuplicate = nil
+            }) {
+                AddEventView(selectedDate: selectedDate, duplicatedEvent: eventToDuplicate)
+            }
+            .sheet(isPresented: $showingAddRoutine, onDismiss: {
+                routineToDuplicate = nil
+            }) {
+                AddRoutineView(orderedWeekdays: orderedWeekdays, duplicatedRoutine: routineToDuplicate )
             }
             .task {
                 seedIfNeeded()
             }
+            .onChange(of: showRoutines) {
+                sortByPriority = showRoutines ? false : sortByPriority
+            }
+            .onChange(of: sortByPriority) {
+                showRoutines = sortByPriority ? false : showRoutines
+            }
+            .onChange(of: showPeriods) {
+                sortByPriority = showPeriods ? false : sortByPriority
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func rowView(for item: any TimelineEntry) -> some View {
+        if let event = item as? Event {
+            EventRowView(event: event, showRoutines: showRoutines, showActionButtons: showActionButtons, selectedDate: selectedDate, selectedTab: selectedTab, onDuplicate: { event in
+                eventToDuplicate = event
+                showingAddEvent = true
+            })
+        }
+        if showRoutines, let routine = item as? Routine {
+            RoutineRowView(routine: routine, selectedWeekday: Weekday(rawValue: selectedWeekday)!, showActionButtons: showActionButtons, orderedWeekdays: orderedWeekdays, selectedTab: selectedTab,
+                onDuplicate: { routine in
+                routineToDuplicate = routine
+                showingAddRoutine = true
+            })
         }
     }
     
@@ -184,7 +344,11 @@ struct TimelineView: View {
                     of: dueDate
                 ) ?? dueDate,
                 creationDate: today,
+                priority: .low,
                 isCompleted: false,
+                notify: false,
+                notifyOffsetValue: 0,
+                notifyOffsetUnit: .minute,
                 recurrenceValue: template.recurrence?.value ?? 0,
                 recurrenceUnit: template.recurrence?.unit ?? .day
             )

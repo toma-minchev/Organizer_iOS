@@ -17,9 +17,27 @@ struct AddRoutineView: View {
     @State private var details = ""
     @State private var dueHour: Int = 9
     @State private var dueMinute: Int = 0
+    @State private var notify: Bool = false
+    @State private var notifyOffsetValue: Int = 1
+    @State private var notifyOffsetUnit: RecurrenceUnit = .hour
     @State private var selectedDays: Set<Int> = []
     
     let orderedWeekdays: [Weekday]
+    let duplicatedRoutine: Routine?
+    
+    init(orderedWeekdays: [Weekday], duplicatedRoutine: Routine?) {
+        self.orderedWeekdays = orderedWeekdays
+        self.duplicatedRoutine = duplicatedRoutine
+
+        _name = State(initialValue: duplicatedRoutine?.name ?? "")
+        _details = State(initialValue: duplicatedRoutine?.details ?? "")
+        _dueHour = State(initialValue: duplicatedRoutine?.dueHour ?? 9)
+        _dueMinute = State(initialValue: duplicatedRoutine?.dueMinute ?? 0)
+        _notify = State(initialValue: duplicatedRoutine?.notify ?? false)
+        _notifyOffsetValue = State(initialValue: duplicatedRoutine?.notifyOffsetValue ?? 0)
+        _notifyOffsetUnit = State(initialValue: duplicatedRoutine?.notifyOffsetUnit ?? .minute)
+        _selectedDays = State(initialValue: Set(duplicatedRoutine?.recurrences ?? []))
+    }
     
     private func toggleDay(_ day: Int) {
         if selectedDays.contains(day) {
@@ -36,7 +54,10 @@ struct AddRoutineView: View {
             dueHour: dueHour,
             dueMinute: dueMinute,
             completions: [],
-            recurrences: Array(selectedDays).sorted()
+            recurrences: Array(selectedDays).sorted(),
+            notify: notify,
+            notifyOffsetValue: notifyOffsetValue,
+            notifyOffsetUnit: notifyOffsetUnit
         )
         
         modelContext.insert(newRoutine)
@@ -87,6 +108,53 @@ struct AddRoutineView: View {
                     ),
                     displayedComponents: .hourAndMinute
                 )
+                
+                Section("Notify") {
+                    Toggle("Send notification", isOn: Binding(
+                        get: { return notify },
+                        set: { newValue in
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                notify = newValue
+                            }
+                        }
+                    ))
+                    .sensoryFeedback(.impact(weight: .medium), trigger: notify)
+
+                    
+                    if notify {
+                        HStack {
+                            Text("Early reminder")
+                            Spacer()
+                            Menu {
+                                Button("0") { notifyOffsetValue = 0 }
+                                ForEach(RecurrenceUnit.recurrenceRange(recurrenceUnit: notifyOffsetUnit), id: \.self) { value in
+                                    Button("\(value)") { notifyOffsetValue = value }
+                                }
+                            } label: {
+                                Text("\(notifyOffsetValue)")
+                                    .frame(minWidth: 20)
+                                    .foregroundColor(.primary)
+                                    .padding(.horizontal, 13)
+                                    .padding(.vertical, 8)
+                                    .background(Capsule().fill(Color(.secondarySystemFill)))
+                            }
+
+                            Menu {
+                                ForEach(RecurrenceUnit.allCases, id: \.self) { unit in
+                                    Button(unit.localizedLabel(value: notifyOffsetValue)) {
+                                        notifyOffsetUnit = unit
+                                    }
+                                }
+                            } label: {
+                                Text(notifyOffsetUnit.localizedLabel(value: notifyOffsetValue))
+                                    .foregroundColor(.primary)
+                                    .padding(.horizontal, 13)
+                                    .padding(.vertical, 8)
+                                    .background(Capsule().fill(Color(.secondarySystemFill)))
+                            }
+                        }
+                    }
+                }
                 
                 Section("Repeat") {
                     ForEach(orderedWeekdays) { day in

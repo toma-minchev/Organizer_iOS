@@ -12,6 +12,9 @@ struct DraftRoutine: Equatable {
     var dueHour: Int
     var dueMinute: Int
     var recurrences: [Int]
+    var notify: Bool
+    var notifyOffsetValue: Int
+    var notifyOffsetUnit: RecurrenceUnit
 }
 
 struct EditRoutineView: View {
@@ -19,11 +22,16 @@ struct EditRoutineView: View {
     @Environment(\.dismiss) private var dismiss
 
     @Bindable var routine: Routine
+    
+    @State private var showDeleteConfirmation = false
+    @State private var draft: DraftRoutine
+    @State private var snapshot: DraftRoutine
+    
     let orderedWeekdays: [Weekday]
     let selectedWeekday: Weekday
 
-    @State private var draft: DraftRoutine
-    private let snapshot: DraftRoutine
+    private var isDirty: Bool { draft != snapshot }
+    private var isNameValid: Bool { !draft.name.trimmingCharacters(in: .whitespaces).isEmpty }
 
     init(routine: Routine, orderedWeekdays: [Weekday], selectedWeekday: Weekday) {
         self.routine = routine
@@ -35,17 +43,14 @@ struct EditRoutineView: View {
             details: routine.details,
             dueHour: routine.dueHour,
             dueMinute: routine.dueMinute,
-            recurrences: routine.recurrences
+            recurrences: routine.recurrences,
+            notify: routine.notify,
+            notifyOffsetValue: routine.notifyOffsetValue,
+            notifyOffsetUnit: routine.notifyOffsetUnit,
         )
 
         _draft = State(initialValue: snap)
         self.snapshot = snap
-    }
-
-    @State private var isDirty: Bool = false
-
-    private var isNameValid: Bool {
-        !draft.name.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     private var completedBinding: Binding<Bool> {
@@ -92,8 +97,14 @@ struct EditRoutineView: View {
         routine.dueHour = draft.dueHour
         routine.dueMinute = draft.dueMinute
         routine.recurrences = draft.recurrences
+        routine.notify = draft.notify
+        routine.notifyOffsetUnit = draft.notifyOffsetUnit
+        routine.notifyOffsetValue = draft.notifyOffsetValue
 
-        routine.scheduleNotification()
+        snapshot = draft
+        
+        if draft.notify { routine.scheduleNotification() }
+        else { routine.deleteNotifications() }
     }
 
     
@@ -121,6 +132,53 @@ struct EditRoutineView: View {
             DatePicker("Complete By", selection: dueBinding, displayedComponents: .hourAndMinute)
             Toggle("Completed", isOn: completedBinding)
                 .sensoryFeedback(.impact(weight: .medium), trigger: routine.completions.contains(selectedWeekday.id))
+            
+            Section("Notify") {
+                Toggle("Send notification", isOn: Binding(
+                    get: { draft.notify },
+                    set: { newValue in
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            draft.notify = newValue
+                        }
+                    }
+                ))
+                .sensoryFeedback(.impact(weight: .medium), trigger: draft.notify)
+                
+                if draft.notify {
+                    HStack {
+                        Text("Early reminder")
+                        Spacer()
+                        Menu {
+                            Button("0") { draft.notifyOffsetValue = 0 }
+                            ForEach(RecurrenceUnit.recurrenceRange(recurrenceUnit: draft.notifyOffsetUnit), id: \.self) { value in
+                                Button("\(value)") { draft.notifyOffsetValue = value }
+                            }
+                        } label: {
+                            Text("\(draft.notifyOffsetValue)")
+                                .frame(minWidth: 20)
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 13)
+                                .padding(.vertical, 8)
+                                .background(Capsule().fill(Color(.secondarySystemFill)))
+                        }
+
+                        Menu {
+                            ForEach(RecurrenceUnit.allCases, id: \.self) { unit in
+                                Button(unit.localizedLabel(value: draft.notifyOffsetValue)) {
+                                    draft.notifyOffsetUnit = unit
+                                }
+                            }
+                        } label: {
+                            Text(draft.notifyOffsetUnit.localizedLabel(value: draft.notifyOffsetValue))
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 13)
+                                .padding(.vertical, 8)
+                                .background(Capsule().fill(Color(.secondarySystemFill)))
+                        }
+                    }
+                }
+            }
+
             
             Section("Repeat") {
                 ForEach(orderedWeekdays) { day in
@@ -153,7 +211,6 @@ struct EditRoutineView: View {
                 if isDirty {
                     Button("Cancel") {
                         draft = snapshot
-                        dismiss()
                     }
                 }
             }
@@ -164,7 +221,6 @@ struct EditRoutineView: View {
                         if isNameValid {
                             applyChanges()
                             UINotificationFeedbackGenerator().notificationOccurred(.success)
-                            dismiss()
                         } else {
                             UINotificationFeedbackGenerator().notificationOccurred(.error)
                         }
@@ -174,20 +230,45 @@ struct EditRoutineView: View {
                     .foregroundColor(isNameValid ? .accentColor : .gray)
                 } else {
                     Button(role: .destructive) {
-                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                        routine.deleteNotifications()
-                        modelContext.delete(routine)
-                        dismiss()
+                        showDeleteConfirmation = true
                     } label: {
                         Label("Delete", systemImage: "trash")
+                    }
+                    .popover(isPresented: $showDeleteConfirmation) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Delete Routine?")
+                                .font(.headline)
+                                
+                                Text("This action cannot be undone.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.top, 8)
+                            
+                            Button {
+                                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                                showDeleteConfirmation = false
+                                routine.deleteNotifications()
+                                modelContext.delete(routine)
+                                dismiss()
+                            } label: {
+                                Text("Delete Event")
+                                .foregroundColor(.red)
+                                .frame(maxWidth: .infinity)
+                            }
+                            .padding(14)
+                            .background(Capsule().fill(.ultraThinMaterial))
+                        }
+                        .padding(14)
+                        .frame(width: 200)
+                        .presentationCompactAdaptation(.popover)
                     }
                 }
             }
         }
-        .onChange(of: draft) {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isDirty = draft != snapshot
-            }
-        }
+        .animation(.easeInOut(duration: 0.2), value: isDirty)
     }
 }
