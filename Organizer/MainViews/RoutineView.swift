@@ -35,15 +35,12 @@ struct RoutineView: View {
     private var routines: [Routine]
     
     @State private var slideDirection: Edge = .trailing
-    @State private var showingAddRoutine = false
     @State private var showActionButtons = false
-    @State private var routineToDuplicate: Routine? = nil
+    @State private var addRoutineItem: AddRoutineContext? = nil
     @State private var selectedWeekday: Weekday = {
         let weekday = Calendar.current.component(.weekday, from: Date())
         return Weekday(rawValue: weekday)!
     }()
-    
-    let selectedTab: Int
     
     @AppStorage("lastWeekNumber") private var lastWeekNumber: Int = 0
     private var currentWeekNumber: Int {
@@ -51,6 +48,8 @@ struct RoutineView: View {
         calendar.firstWeekday = Calendar.current.firstWeekday
         return calendar.component(.weekOfYear, from: Date())
     }
+    
+    let selectedTab: Int
     
     var filteredRoutines: [Routine] { routines.filter { $0.recurrences.contains(selectedWeekday.rawValue) } }
     
@@ -61,52 +60,6 @@ struct RoutineView: View {
         }
         return Array(Weekday.allCases[index...] + Weekday.allCases[..<index])
     }
-    
-    private func resetRoutinesIfNewWeek() {
-        var calendar = Calendar.current
-        calendar.firstWeekday = Calendar.current.firstWeekday
-        let currentWeek = calendar.component(.weekOfYear, from: Date())
-        guard currentWeek != lastWeekNumber else { return }
-        
-        for routine in routines {
-            routine.completions = []
-            routine.scheduleNotification()
-        }
-        
-        try? modelContext.save()
-        lastWeekNumber = currentWeek
-    }
-    
-    func schedulePausedNotificationsReminder() {
-            let center = UNUserNotificationCenter.current()
-            
-            center.removePendingNotificationRequests(withIdentifiers: ["notifications-paused-reminder"])
-            
-            let calendar = Calendar.current
-            guard let reminderDate = calendar.date(byAdding: .weekOfYear, value: 3, to: Date()) else { return }
-            
-            var components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: reminderDate)
-            components.hour = 9
-            components.minute = 0
-            
-            let content = UNMutableNotificationContent()
-            content.title = "Routine notifications paused."
-            content.body = "Notifications will resume when you open the app."
-            content.sound = .default
-            
-            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-            let request = UNNotificationRequest(
-                identifier: "notifications-paused-reminder",
-                content: content,
-                trigger: trigger
-            )
-            
-            center.add(request) { error in
-                if let error {
-                    print("Failed to schedule paused notifications reminder:", error)
-                }
-            }
-        }
 
     
     var body: some View {
@@ -117,8 +70,7 @@ struct RoutineView: View {
                         ForEach(filteredRoutines) { routine in
                             RoutineRowView(routine: routine, selectedWeekday: selectedWeekday, showActionButtons: showActionButtons, orderedWeekdays: orderedWeekdays, selectedTab: selectedTab,
                                 onDuplicate: { routine in
-                                routineToDuplicate = routine
-                                showingAddRoutine = true
+                                addRoutineItem = AddRoutineContext(duplicatedRoutine: routine)
                             })
                         }
                     }
@@ -190,7 +142,7 @@ struct RoutineView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if !showActionButtons {
-                        Button { showingAddRoutine = true }
+                        Button { addRoutineItem = AddRoutineContext(duplicatedRoutine: nil) }
                         label: { Label("Add Event", systemImage: "plus") }
                     }
                 }
@@ -198,17 +150,61 @@ struct RoutineView: View {
             .onDisappear {
                 showActionButtons = false
             }
-            .sheet(isPresented: $showingAddRoutine, onDismiss: {
-                routineToDuplicate = nil
-            }) {
-                AddRoutineView(orderedWeekdays: orderedWeekdays, duplicatedRoutine: routineToDuplicate )
+            .sheet(item: $addRoutineItem) { context in
+                AddRoutineView(orderedWeekdays: orderedWeekdays, duplicatedRoutine: context.duplicatedRoutine )
             }
             .task {
                 schedulePausedNotificationsReminder()
                 resetRoutinesIfNewWeek()
-                seedIfNeeded()
+//                seedIfNeeded()
             }
         }
+    }
+    
+    func schedulePausedNotificationsReminder() {
+        let center = UNUserNotificationCenter.current()
+        
+        center.removePendingNotificationRequests(withIdentifiers: ["notifications-paused-reminder"])
+        
+        let calendar = Calendar.current
+        guard let reminderDate = calendar.date(byAdding: .weekOfYear, value: 3, to: Date()) else { return }
+        
+        var components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: reminderDate)
+        components.hour = 9
+        components.minute = 0
+        
+        let content = UNMutableNotificationContent()
+        content.title = "Routine notifications paused."
+        content.body = "Notifications will resume when you open the app."
+        content.sound = .default
+        
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "notifications-paused-reminder",
+            content: content,
+            trigger: trigger
+        )
+        
+        center.add(request) { error in
+            if let error {
+                print("Failed to schedule paused notifications reminder:", error)
+            }
+        }
+    }
+    
+    private func resetRoutinesIfNewWeek() {
+        var calendar = Calendar.current
+        calendar.firstWeekday = Calendar.current.firstWeekday
+        let currentWeek = calendar.component(.weekOfYear, from: Date())
+        guard currentWeek != lastWeekNumber else { return }
+        
+        for routine in routines {
+            routine.completions = []
+            routine.scheduleNotification()
+        }
+        
+        try? modelContext.save()
+        lastWeekNumber = currentWeek
     }
     
     private func seedIfNeeded() {

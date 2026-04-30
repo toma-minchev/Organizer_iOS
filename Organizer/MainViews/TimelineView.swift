@@ -15,11 +15,21 @@ protocol TimelineEntry {
 }
 
 enum TimePeriod: String, CaseIterable {
-    case morning = "Morning"
-    case midday = "Midday"
-    case afternoon = "Afternoon"
-    case evening = "Evening"
-    case night = "Night"
+    case morning
+    case midday
+    case afternoon
+    case evening
+    case night
+
+    var title: String {
+        switch self {
+        case .morning: return String(localized: "Morning")
+        case .midday: return String(localized: "Midday")
+        case .afternoon: return String(localized: "Afternoon")
+        case .evening: return String(localized: "Evening")
+        case .night: return String(localized: "Night")
+        }
+    }
 
     var range: Range<Int> {
         switch self {
@@ -32,6 +42,16 @@ enum TimePeriod: String, CaseIterable {
     }
 }
 
+struct AddEventContext: Identifiable {
+    let id = UUID()
+    let duplicatedEvent: Event?
+}
+
+struct AddRoutineContext: Identifiable {
+    let id = UUID()
+    let duplicatedRoutine: Routine?
+}
+
 
 struct TimelineView: View {
     @Environment(\.modelContext) private var modelContext
@@ -39,19 +59,17 @@ struct TimelineView: View {
     @Query(sort: [SortDescriptor(\Event.dueDate)]) private var events: [Event]
     @Query(sort: [SortDescriptor(\Routine.dueHour), SortDescriptor(\Routine.dueMinute)]) private var routines: [Routine]
     
-    @State private var collapsedGroups: Set<String> = []
     @State private var slideDirection: Edge = .trailing
-    @State private var showingAddEvent = false
     @State private var showDatePicker = false
-    @State private var showingAddRoutine = false
     @State private var showActionButtons = false
     @State private var selectedDate = Date()
-    @State private var eventToDuplicate: Event? = nil
-    @State private var routineToDuplicate: Routine? = nil
+    @State private var collapsedGroups: Set<String> = []
+    @State private var addEventItem: AddEventContext? = nil
+    @State private var addRoutineItem: AddRoutineContext? = nil
     
+    @AppStorage("sortByPriority") private var sortByPriority: Bool = false
     @AppStorage("showPeriods") private var showPeriods: Bool = true
     @AppStorage("showRoutines") private var showRoutines = true
-    @AppStorage("sortByPriority") private var sortByPriority: Bool = false
     
     let selectedTab: Int
     
@@ -73,7 +91,7 @@ struct TimelineView: View {
         TimePeriod.allCases.compactMap { period -> (name: String, items: [any TimelineEntry])? in
             let items: [any TimelineEntry] = timelineItems.filter { period.range.contains($0.secondsFromMidnight) }
             guard !items.isEmpty else { return nil }
-            return (period.rawValue, items)
+            return (period.title, items)
         }
     }
 
@@ -181,8 +199,10 @@ struct TimelineView: View {
                             Text(selectedDate.formatted(date: .abbreviated, time: .omitted))
                                 .foregroundColor(.primary)
                                 .frame(maxHeight: .infinity)
+                                .font(.system(size: 14))
+                                .fontWeight(.medium)
                                 .padding(.horizontal, 10)
-                                .background(Capsule().fill(Color(.tertiarySystemBackground)))
+                                .background(Capsule().fill(Color("CustomGray")))
                         }
                         .frame(maxHeight: 26)
                         .popover(isPresented: $showDatePicker) {
@@ -203,7 +223,7 @@ struct TimelineView: View {
                                     .foregroundColor(sortByPriority ? .white : .primary)
                                     .frame(width: 50)
                                     .frame(maxHeight: 26)
-                                    .background(Capsule().fill(sortByPriority ? Color.accentColor : Color(.tertiarySystemBackground)))
+                                    .background(Capsule().fill(sortByPriority ? Color.accentColor : Color("CustomGray")))
                             }
                             .sensoryFeedback(.impact(weight: .medium), trigger: sortByPriority)
                         }
@@ -215,7 +235,7 @@ struct TimelineView: View {
                                 .foregroundColor(showPeriods ? .white : .primary)
                                 .frame(width: 50)
                                 .frame(maxHeight: 26)
-                                .background(Capsule().fill(showPeriods ? Color.accentColor : Color(.tertiarySystemBackground)))
+                                .background(Capsule().fill(showPeriods ? Color.accentColor : Color("CustomGray")))
                         }
                         .sensoryFeedback(.impact(weight: .medium), trigger: showPeriods)
 
@@ -226,14 +246,13 @@ struct TimelineView: View {
                                 .foregroundColor(showRoutines ? .white : .primary)
                                 .frame(width: 50)
                                 .frame(maxHeight: 26)
-                                .background(Capsule().fill(showRoutines ? Color.accentColor : Color(.tertiarySystemBackground)))
+                                .background(Capsule().fill(showRoutines ? Color.accentColor : Color("CustomGray")))
                         }
                         .sensoryFeedback(.impact(weight: .medium), trigger: showRoutines)
                     }
                     .padding(3)
                 }
                 .background(Capsule().fill(Color(.secondarySystemFill)))
-                .background(Capsule().fill(.regularMaterial))
                 .padding(.horizontal)
                 .padding(.top, 7)
                 .zIndex(1)
@@ -262,7 +281,7 @@ struct TimelineView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if !showActionButtons {
-                        Button { showingAddEvent = true }
+                        Button { addEventItem = AddEventContext(duplicatedEvent: nil) }
                         label: { Label("Add Event", systemImage: "plus") }
                     }
                 }
@@ -270,19 +289,15 @@ struct TimelineView: View {
             .onDisappear {
                 showActionButtons = false
             }
-            .sheet(isPresented: $showingAddEvent, onDismiss: {
-                eventToDuplicate = nil
-            }) {
-                AddEventView(selectedDate: selectedDate, duplicatedEvent: eventToDuplicate)
+            .sheet(item: $addEventItem) { context in
+                AddEventView(selectedDate: selectedDate, duplicatedEvent: context.duplicatedEvent)
             }
-            .sheet(isPresented: $showingAddRoutine, onDismiss: {
-                routineToDuplicate = nil
-            }) {
-                AddRoutineView(orderedWeekdays: orderedWeekdays, duplicatedRoutine: routineToDuplicate )
+            .sheet(item: $addRoutineItem) { context in
+                AddRoutineView(orderedWeekdays: orderedWeekdays, duplicatedRoutine: context.duplicatedRoutine )
             }
-            .task {
-                seedIfNeeded()
-            }
+//            .task {
+//                seedIfNeeded()
+//            }
             .onChange(of: showRoutines) {
                 sortByPriority = showRoutines ? false : sortByPriority
             }
@@ -299,19 +314,17 @@ struct TimelineView: View {
     private func rowView(for item: any TimelineEntry) -> some View {
         if let event = item as? Event {
             EventRowView(event: event, showRoutines: showRoutines, showActionButtons: showActionButtons, selectedDate: selectedDate, selectedTab: selectedTab, onDuplicate: { event in
-                eventToDuplicate = event
-                showingAddEvent = true
+                addEventItem = AddEventContext(duplicatedEvent: event)
             })
         }
         if showRoutines, let routine = item as? Routine {
-            RoutineRowView(routine: routine, selectedWeekday: Weekday(rawValue: selectedWeekday)!, showActionButtons: showActionButtons, orderedWeekdays: orderedWeekdays, selectedTab: selectedTab,
-                onDuplicate: { routine in
-                routineToDuplicate = routine
-                showingAddRoutine = true
+            RoutineRowView(routine: routine, selectedWeekday: Weekday(rawValue: selectedWeekday)!, showActionButtons: showActionButtons, orderedWeekdays: orderedWeekdays, selectedTab: selectedTab, onDuplicate: { routine in
+                addRoutineItem = AddRoutineContext(duplicatedRoutine: routine)
             })
         }
     }
     
+    // Create sample data for testing
     private func seedIfNeeded() {
         guard events.isEmpty else { return }
         
