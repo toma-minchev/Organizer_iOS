@@ -6,6 +6,7 @@
 import SwiftUI
 import SwiftData
 
+
 struct DraftRoutine: Equatable {
     var name: String
     var details: String

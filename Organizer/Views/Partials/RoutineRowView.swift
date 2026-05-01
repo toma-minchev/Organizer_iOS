@@ -22,8 +22,7 @@ struct RoutineRowView: View {
     
     private var dueTime: Date { Calendar.current.date(
         bySettingHour: routine.dueHour,
-        minute: routine.dueMinute,
-        second: 0,
+        minute: routine.dueMinute, second: 0,
         of: Date()
     ) ?? Date()}
     
