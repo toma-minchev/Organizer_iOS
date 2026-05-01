@@ -90,7 +90,7 @@ extension Event {
         }
 
         guard recurrenceValue > 0 else { return false }
-        guard date >= creationDate else { return false }
+        guard date >= dueDate else { return false }
 
         switch recurrenceUnit {
             case .minute:

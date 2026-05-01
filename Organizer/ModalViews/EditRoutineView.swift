@@ -83,30 +83,6 @@ struct EditRoutineView: View {
         )
     }
 
-    private func toggleDay(_ day: Int) {
-        if draft.recurrences.contains(day) {
-            draft.recurrences.removeAll { $0 == day }
-        } else {
-            draft.recurrences.append(day)
-        }
-    }
-
-    private func applyChanges() {
-        routine.name = draft.name
-        routine.details = draft.details
-        routine.dueHour = draft.dueHour
-        routine.dueMinute = draft.dueMinute
-        routine.recurrences = draft.recurrences
-        routine.notify = draft.notify
-        routine.notifyOffsetUnit = draft.notifyOffsetUnit
-        routine.notifyOffsetValue = draft.notifyOffsetValue
-
-        snapshot = draft
-        
-        if draft.notify { routine.scheduleNotification() }
-        else { routine.deleteNotifications() }
-    }
-
     
     var body: some View {
         Form {
@@ -270,5 +246,29 @@ struct EditRoutineView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: isDirty)
+    }
+    
+    private func toggleDay(_ day: Int) {
+        if draft.recurrences.contains(day) {
+            draft.recurrences.removeAll { $0 == day }
+        } else {
+            draft.recurrences.append(day)
+        }
+    }
+
+    private func applyChanges() {
+        routine.name = draft.name
+        routine.details = draft.details
+        routine.dueHour = draft.dueHour
+        routine.dueMinute = draft.dueMinute
+        routine.recurrences = draft.recurrences
+        routine.notify = draft.notify
+        routine.notifyOffsetUnit = draft.notifyOffsetUnit
+        routine.notifyOffsetValue = draft.notifyOffsetValue
+
+        snapshot = draft
+        
+        if draft.notify { routine.scheduleNotification() }
+        else { routine.deleteNotifications() }
     }
 }

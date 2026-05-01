@@ -41,27 +41,6 @@ struct AddEventView: View {
         _recurrenceUnit = State(initialValue: duplicatedEvent?.recurrenceUnit ?? .minute)
     }
     
-    private func saveEvent() {
-        let newEvent = Event(
-            name: name,
-            details: details,
-            dueDate: dueDate,
-            creationDate: Date(),
-            priority: priority,
-            isCompleted: false,
-            notify: notify,
-            notifyOffsetValue: notifyOffsetValue,
-            notifyOffsetUnit: notifyOffsetUnit,
-            recurrenceValue: recurrenceValue,
-            recurrenceUnit: recurrenceValue == 0 ? .day : recurrenceUnit
-        )
-
-        modelContext.insert(newEvent)
-        try? modelContext.save()
-        
-        if notify { newEvent.scheduleNotification() }
-    }
-    
     
     var body: some View {
         NavigationStack {
@@ -226,6 +205,27 @@ struct AddEventView: View {
                 recurrenceValue = min(recurrenceValue, RecurrenceUnit.recurrenceRange(recurrenceUnit: recurrenceUnit).upperBound)
             }
         }
+    }
+    
+    private func saveEvent() {
+        let newEvent = Event(
+            name: name,
+            details: details,
+            dueDate: dueDate,
+            creationDate: Date(),
+            priority: priority,
+            isCompleted: false,
+            notify: notify,
+            notifyOffsetValue: notifyOffsetValue,
+            notifyOffsetUnit: notifyOffsetUnit,
+            recurrenceValue: recurrenceValue,
+            recurrenceUnit: recurrenceValue == 0 ? .day : recurrenceUnit
+        )
+
+        modelContext.insert(newEvent)
+        try? modelContext.save()
+        
+        if notify { newEvent.scheduleNotification() }
     }
 }
 

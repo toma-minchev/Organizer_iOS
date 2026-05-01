@@ -47,23 +47,6 @@ struct EditEventView: View {
         _draft = State(initialValue: snap)
         _snapshot = State(initialValue: snap)
     }
-    
-    private func applyChanges() {
-        event.name = draft.name
-        event.details = draft.details
-        event.dueDate = draft.dueDate
-        event.priority = draft.priority
-        event.notify = draft.notify
-        event.notifyOffsetUnit = draft.notifyOffsetUnit
-        event.notifyOffsetValue = draft.notifyOffsetValue
-        event.recurrenceValue = draft.recurrenceValue
-        event.recurrenceUnit = draft.recurrenceUnit
-        
-        snapshot = draft
-        
-        if draft.notify { event.scheduleNotification() }
-        else { event.deleteNotification() }
-    }
 
     
     var body: some View {
@@ -108,7 +91,10 @@ struct EditEventView: View {
                 }
             }
 
-            Toggle("Completed", isOn: $event.isCompleted)
+            Toggle("Completed", isOn: Binding(
+                get: { event.isCompleted },
+                set: { _ in handleCompletion() }
+            ))
             .sensoryFeedback(.impact(weight: .medium), trigger: event.isCompleted)
             
             Section("Notify") {
@@ -272,5 +258,41 @@ struct EditEventView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: isDirty)
+    }
+    
+    private func applyChanges() {
+        event.name = draft.name
+        event.details = draft.details
+        event.dueDate = draft.dueDate
+        event.priority = draft.priority
+        event.notify = draft.notify
+        event.notifyOffsetUnit = draft.notifyOffsetUnit
+        event.notifyOffsetValue = draft.notifyOffsetValue
+        event.recurrenceValue = draft.recurrenceValue
+        event.recurrenceUnit = draft.recurrenceUnit
+        
+        snapshot = draft
+        
+        if draft.notify { event.scheduleNotification() }
+        else { event.deleteNotification() }
+    }
+    
+    private func handleCompletion() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        withAnimation {
+            event.isCompleted.toggle()
+        }
+        
+        if event.isCompleted {
+            if event.recurrenceValue > 0 {
+                event.addToDueDate()
+                event.scheduleNotification()
+            } else {
+                event.deleteNotification()
+            }
+            dismiss()
+        } else {
+            event.scheduleNotification()
+        }
     }
 }

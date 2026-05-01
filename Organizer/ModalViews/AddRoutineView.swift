@@ -39,33 +39,6 @@ struct AddRoutineView: View {
         _selectedDays = State(initialValue: Set(duplicatedRoutine?.recurrences ?? []))
     }
     
-    private func toggleDay(_ day: Int) {
-        if selectedDays.contains(day) {
-            selectedDays.remove(day)
-        } else {
-            selectedDays.insert(day)
-        }
-    }
-    
-    private func saveRoutine() {
-        let newRoutine = Routine(
-            name: name,
-            details: details,
-            dueHour: dueHour,
-            dueMinute: dueMinute,
-            completions: [],
-            recurrences: Array(selectedDays).sorted(),
-            notify: notify,
-            notifyOffsetValue: notifyOffsetValue,
-            notifyOffsetUnit: notifyOffsetUnit
-        )
-        
-        modelContext.insert(newRoutine)
-        try? modelContext.save()
-        
-        newRoutine.scheduleNotification()
-    }
-    
     
     var body: some View {
         NavigationStack {
@@ -204,5 +177,32 @@ struct AddRoutineView: View {
                 }
             }
         }
+    }
+    
+    private func toggleDay(_ day: Int) {
+        if selectedDays.contains(day) {
+            selectedDays.remove(day)
+        } else {
+            selectedDays.insert(day)
+        }
+    }
+    
+    private func saveRoutine() {
+        let newRoutine = Routine(
+            name: name,
+            details: details,
+            dueHour: dueHour,
+            dueMinute: dueMinute,
+            completions: [],
+            recurrences: Array(selectedDays).sorted(),
+            notify: notify,
+            notifyOffsetValue: notifyOffsetValue,
+            notifyOffsetUnit: notifyOffsetUnit
+        )
+        
+        modelContext.insert(newRoutine)
+        try? modelContext.save()
+        
+        newRoutine.scheduleNotification()
     }
 }

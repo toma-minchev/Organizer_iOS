@@ -161,15 +161,12 @@ struct TimelineView: View {
                     .animation(.easeInOut(duration: 0.2), value: selectedDate)
                     .gesture(DragGesture(minimumDistance: 50, coordinateSpace: .local)
                         .onEnded { value in
-                            if value.translation.width < 0 {
-                                slideDirection = .trailing
+                            let horizontalAmount = value.translation.width
+                            let verticalAmount = value.translation.height
+                            if abs(horizontalAmount) > abs(verticalAmount) {
+                                slideDirection = horizontalAmount < 0 ? .trailing : .leading
                                 withAnimation(.easeInOut(duration: 0.3)) {
-                                    selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate)!
-                                }
-                            } else if value.translation.width > 0 {
-                                slideDirection = .leading
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate)!
+                                    selectedDate = Calendar.current.date(byAdding: .day, value: horizontalAmount < 0 ? 1 : -1, to: selectedDate)!
                                 }
                             }
                         }
@@ -208,9 +205,9 @@ struct TimelineView: View {
                         .popover(isPresented: $showDatePicker) {
                             DatePicker("", selection: $selectedDate, displayedComponents: .date)
                             .datePickerStyle(.graphical)
-                            .presentationCompactAdaptation(.popover)
                             .frame(width: 320)
                             .padding(.horizontal, 10)
+                            .presentationCompactAdaptation(.popover)
                         }
                         
                         Spacer()
@@ -253,6 +250,7 @@ struct TimelineView: View {
                     .padding(3)
                 }
                 .background(Capsule().fill(Color(.secondarySystemFill)))
+                .background(Capsule().fill(.ultraThinMaterial))
                 .padding(.horizontal)
                 .padding(.top, 7)
                 .zIndex(1)
@@ -295,9 +293,9 @@ struct TimelineView: View {
             .sheet(item: $addRoutineItem) { context in
                 AddRoutineView(orderedWeekdays: orderedWeekdays, duplicatedRoutine: context.duplicatedRoutine )
             }
-//            .task {
-//                seedIfNeeded()
-//            }
+            .task {
+                seedIfNeeded()
+            }
             .onChange(of: showRoutines) {
                 sortByPriority = showRoutines ? false : sortByPriority
             }
@@ -331,13 +329,20 @@ struct TimelineView: View {
         let calendar = Calendar.current
         let today = Date()
         
-        let eventTemplates: [(name: String, details: String, offsetDays: Int, hour: Int, minute: Int, recurrence: (value: Int, unit: RecurrenceUnit)?)] = [
-            ("Project Meeting", "Discuss sprint tasks", 0, 10, 0, nil),
-            ("Lunch with Friend", "Meet at cafe", 0, 13, 30, nil),
-            ("Workout", "Gym session", -1, 18, 0, (1, .day)),
-            ("Check Email", "Daily inbox review", 0, 8, 0, (1, .day)),
-            ("Pay Bills", "Monthly electricity and internet", 2, 12, 0, (1, .month)),
-            ("Weekly Review", "Review goals and tasks", 0, 17, 30, (1, .week))
+        let eventTemplates: [(
+            name: String, details: String, offsetDays: Int, hour: Int, minute: Int,
+            priority: Priority, isCompleted: Bool,
+            notify: Bool, notifyOffsetValue: Int, notifyOffsetUnit: RecurrenceUnit,
+            recurrenceValue: Int, recurrenceUnit: RecurrenceUnit
+        )] = [
+            ("Скръм дейли",       "Синхрон с екипа в Meet",              0,  9, 30, .medium, false, true,  10, .minute, 1, .day),
+            ("Код ревю",          "Прегледай PR-ите преди merge",         1, 11,  0, .high,   false, true,  15, .minute, 0, .day),
+            ("Среща с клиента",   "Демо на новите функции пред клиента",  3, 14,  0, .high,   false, true,  30, .minute, 0, .day),
+            ("Плащане на сметки", "Ток, интернет и абонаменти",           5, 12,  0, .medium, false, true,   1, .day,    1, .month),
+            ("Спринт планиране",  "Планиране на задачите за спринта",     0, 10,  0, .high,   false, true,  20, .minute, 2, .week),
+            ("Бек-ъп на проекти", "Качи локалните репота в облака",       1, 20,  0, .low,    false, true,   1, .hour,   1, .week),
+            ("Актуализирай CV",   "Добави последните проекти и умения",  14,  9,  0, .low,    false, true,   1, .day,    1, .year),
+            ("Прегледай задачи",  "Провери Jira и затвори стари тикети",  0, 17, 30, .medium, false, true,  15, .minute, 1, .day),
         ]
         
         for template in eventTemplates {
@@ -357,13 +362,13 @@ struct TimelineView: View {
                     of: dueDate
                 ) ?? dueDate,
                 creationDate: today,
-                priority: .low,
-                isCompleted: false,
-                notify: false,
-                notifyOffsetValue: 0,
-                notifyOffsetUnit: .minute,
-                recurrenceValue: template.recurrence?.value ?? 0,
-                recurrenceUnit: template.recurrence?.unit ?? .day
+                priority: template.priority,
+                isCompleted: template.isCompleted,
+                notify: template.notify,
+                notifyOffsetValue: template.notifyOffsetValue,
+                notifyOffsetUnit: template.notifyOffsetUnit,
+                recurrenceValue: template.recurrenceValue,
+                recurrenceUnit: template.recurrenceUnit
             )
             
             modelContext.insert(event)

@@ -29,25 +29,6 @@ struct RoutineRowView: View {
     
     private var isCompleted: Bool { routine.completions.contains(selectedWeekday.id) }
     private var isOverdue: Bool {dueTime < Date() && !isCompleted }
-    
-    private func handleCompletion() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        withAnimation {
-            if isCompleted {
-                routine.completions.removeAll { $0 == selectedWeekday.id }
-                routine.deleteSingleNotification(weekday: selectedWeekday.id)
-            } else {
-                routine.completions.append(selectedWeekday.id)
-            }
-        }
-    }
-    
-    private func handleDeletion() {
-        showDeleteConfirmation = false
-        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-        routine.deleteNotifications()
-        modelContext.delete(routine)
-    }
 
     
     var body: some View {
@@ -90,12 +71,15 @@ struct RoutineRowView: View {
                     
                     Text(routine.name)
                     .lineLimit(1)
+                    .truncationMode(.tail)
                     .bold()
                     .foregroundColor(isCompleted ? .secondary : .primary)
                     .strikethrough(isCompleted)
                     
                     if !isCompleted && !routine.details.isEmpty {
                         Text(routine.details)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .transition(.scale(scale: 0.95).combined(with: .opacity))
@@ -177,6 +161,25 @@ struct RoutineRowView: View {
                 EditRoutineView(routine: routine, orderedWeekdays: orderedWeekdays, selectedWeekday: selectedWeekday)
             }
         }
+    }
+    
+    private func handleCompletion() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        withAnimation {
+            if isCompleted {
+                routine.completions.removeAll { $0 == selectedWeekday.id }
+                routine.deleteSingleNotification(weekday: selectedWeekday.id)
+            } else {
+                routine.completions.append(selectedWeekday.id)
+            }
+        }
+    }
+    
+    private func handleDeletion() {
+        showDeleteConfirmation = false
+        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        routine.deleteNotifications()
+        modelContext.delete(routine)
     }
 }
 

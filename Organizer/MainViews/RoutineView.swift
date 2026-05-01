@@ -78,19 +78,15 @@ struct RoutineView: View {
                     .contentMargins(.top, 50)
                     .transition(.opacity)
                     .animation(.easeInOut(duration: 0.2), value: filteredRoutines)
-                    .gesture(
-                        DragGesture(minimumDistance: 50, coordinateSpace: .local)
+                    .gesture(DragGesture(minimumDistance: 50, coordinateSpace: .local)
                         .onEnded { value in
                             let current = orderedWeekdays.firstIndex(of: selectedWeekday)!
-                            if value.translation.width < 0 {
-                                slideDirection = .trailing
+                            let horizontalAmount = value.translation.width
+                            let verticalAmount = value.translation.height
+                            if abs(horizontalAmount) > abs(verticalAmount) {
+                                slideDirection = horizontalAmount < 0 ? .trailing : .leading
                                 withAnimation(.easeInOut(duration: 0.3)) {
-                                    selectedWeekday = orderedWeekdays[(current + 1) % orderedWeekdays.count]
-                                }
-                            } else if value.translation.width > 0 {
-                                slideDirection = .leading
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    selectedWeekday = orderedWeekdays[(current - 1 + orderedWeekdays.count) % orderedWeekdays.count]
+                                    selectedWeekday = horizontalAmount < 0 ? orderedWeekdays[(current + 1) % orderedWeekdays.count] :                                                            orderedWeekdays[(current - 1 + orderedWeekdays.count) % orderedWeekdays.count]
                                 }
                             }
                         }
@@ -112,7 +108,7 @@ struct RoutineView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .background(Capsule().fill(.regularMaterial))
+                .background(Capsule().fill(.ultraThinMaterial))
                 .padding(.horizontal)
                 .padding(.top, 7)
                 .zIndex(1)
@@ -156,7 +152,7 @@ struct RoutineView: View {
             .task {
                 schedulePausedNotificationsReminder()
                 resetRoutinesIfNewWeek()
-//                seedIfNeeded()
+                seedIfNeeded()
             }
         }
     }
@@ -210,12 +206,18 @@ struct RoutineView: View {
     private func seedIfNeeded() {
         guard routines.isEmpty else { return }
         
-        let routineTemplates: [(name: String, details: String, hour: Int, minute: Int, days: [Int])] = [
-            ("Morning Jog", "Jog for 30 minutes", 6, 30, [2,3,4,5,6]),
-            ("Drink Water", "Drink a glass of water", 9, 0, [1,2,3,4,5,6,7]),
-            ("Read Book", "Read 20 pages", 20, 0, [2,4,6]),
-            ("Meditation", "10 minutes meditation", 7, 0, [1,2,3,4,5,6,7]),
-            ("Weekly Call", "Call parents", 18, 0, [7])
+        let routineTemplates: [(
+            name: String, details: String, hour: Int, minute: Int,
+            notify: Bool, notifyOffsetValue: Int, notifyOffsetUnit: RecurrenceUnit,
+            days: [Int]
+        )] = [
+            ("Провери Slack",        "Прегледай съобщенията и каналите",     8,  0, true, 5,  .minute, [2,3,4,5,6]),
+            ("Сутрешно разтягане",   "15 минути стречинг пред бюрото",       7, 15, true, 5,  .minute, [2,3,4,5,6,7,1]),
+            ("LeetCode задача",      "Реши поне 1 задача на ден",           21,  0, true, 10, .minute, [2,4,6]),
+            ("Прочети тех статия",   "Hacker News или Medium — 20 минути",  12, 30, true, 5,  .minute, [2,3,4,5,6]),
+            ("Седмично ретро",       "Какво мина добре, какво — не",        18,  0, true, 15, .minute, [6]),
+            ("Спри да работиш",      "Затвори лаптопа, излез навън",        19,  0, true, 0,  .minute, [2,3,4,5,6]),
+            ("Личен проект",         "Работи по side project-а",            20, 30, true, 10, .minute, [7,1]),
         ]
         
         for template in routineTemplates {
@@ -226,9 +228,9 @@ struct RoutineView: View {
                 dueMinute: template.minute,
                 completions: [],
                 recurrences: template.days,
-                notify: false,
-                notifyOffsetValue: 0,
-                notifyOffsetUnit: .minute,
+                notify: template.notify,
+                notifyOffsetValue: template.notifyOffsetValue,
+                notifyOffsetUnit: template.notifyOffsetUnit,
             )
             
             modelContext.insert(routine)

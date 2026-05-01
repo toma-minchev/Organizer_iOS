@@ -20,31 +20,6 @@ struct EventRowView: View {
     let selectedTab: Int
     let onDuplicate: (Event) -> Void
     private var isOverdue: Bool { event.dueDate < Date() && selectedDate < Date() && !event.isCompleted }
-    
-    private func handleCompletion() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        withAnimation {
-            event.isCompleted.toggle()
-        }
-        
-        if event.isCompleted {
-            if event.recurrenceValue > 0 {
-                event.addToDueDate()
-                event.scheduleNotification()
-            } else {
-                event.deleteNotification()
-            }
-        } else {
-            event.scheduleNotification()
-        }
-    }
-    
-    private func handleDeletion() {
-        showDeleteConfirmation = false
-        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-        event.deleteNotification()
-        modelContext.delete(event)
-    }
 
     
     var body: some View {
@@ -94,12 +69,15 @@ struct EventRowView: View {
                     
                     Text(event.name)
                     .lineLimit(1)
+                    .truncationMode(.tail)
                     .bold()
                     .foregroundColor(event.isCompleted ? .secondary : .primary)
                     .strikethrough(event.isCompleted)
                     
                     if !event.isCompleted && !event.details.isEmpty {
                         Text(event.details)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .transition(.scale(scale: 0.95).combined(with: .opacity))
@@ -181,5 +159,30 @@ struct EventRowView: View {
                 EditEventView(event: event)
             }
         }
+    }
+    
+    private func handleCompletion() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        withAnimation {
+            event.isCompleted.toggle()
+        }
+        
+        if event.isCompleted {
+            if event.recurrenceValue > 0 {
+                event.addToDueDate()
+                event.scheduleNotification()
+            } else {
+                event.deleteNotification()
+            }
+        } else {
+            event.scheduleNotification()
+        }
+    }
+    
+    private func handleDeletion() {
+        showDeleteConfirmation = false
+        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        event.deleteNotification()
+        modelContext.delete(event)
     }
 }
