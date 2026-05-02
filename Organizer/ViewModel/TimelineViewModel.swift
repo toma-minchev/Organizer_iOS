@@ -15,7 +15,6 @@ final class TimelineViewModel {
     var sortByPriority: Bool {
         didSet {
             UserDefaults.standard.set(sortByPriority, forKey: "sortByPriority")
-            // Turning on sort-by-priority hides routines
             if sortByPriority { showRoutines = false }
         }
     }
@@ -23,7 +22,6 @@ final class TimelineViewModel {
     var showPeriods: Bool {
         didSet {
             UserDefaults.standard.set(showPeriods, forKey: "showPeriods")
-            // Turning periods back on resets sort-by-priority
             if showPeriods { sortByPriority = false }
         }
     }
@@ -31,7 +29,6 @@ final class TimelineViewModel {
     var showRoutines: Bool {
         didSet {
             UserDefaults.standard.set(showRoutines, forKey: "showRoutines")
-            // Turning routines back on resets sort-by-priority
             if showRoutines { sortByPriority = false }
         }
     }
