@@ -205,9 +205,9 @@ struct TimelineView: View {
             .sheet(item: $vm.addRoutineItem) { context in
                 AddRoutineView(orderedWeekdays: viewModel.orderedWeekdays, duplicatedRoutine: context.duplicatedRoutine)
             }
-//            .task {
-//                viewModel.seedIfNeeded(events: events, modelContext: modelContext)
-//            }
+            .task {
+                viewModel.seedIfNeeded(events: events, modelContext: modelContext)
+            }
         }
     }
 

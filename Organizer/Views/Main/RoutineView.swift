@@ -118,7 +118,7 @@ struct RoutineView: View {
             .task {
                 viewModel.schedulePausedNotificationsReminder()
                 viewModel.resetRoutinesIfNewWeek(routines: routines, modelContext: modelContext)
-                //viewModel.seedIfNeeded(routines: routines, modelContext: modelContext)
+                viewModel.seedIfNeeded(routines: routines, modelContext: modelContext)
             }
         }
     }
