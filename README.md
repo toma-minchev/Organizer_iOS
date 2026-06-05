@@ -13,7 +13,7 @@ The main view combines both systems to present a unified daily overview, mixing 
 Sorting by time of day or priority is available in the main view. Sorting by day is presented in the Routines view.
 
 ## Screenshots
-| Screenshot 1 | Screenshot 2 |
+| Events view | Routines view |
 |--------------|--------------|
 | ![](Screenshots/Simulator%20Screenshot%20-%20iPhone%2017%20-%202026-05-01%20at%2013.20.33.png) | ![](Screenshots/Simulator%20Screenshot%20-%20iPhone%2017%20-%202026-05-01%20at%2013.20.39.png) |
 
