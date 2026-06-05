@@ -12,10 +12,10 @@ The app provides two primary planning systems:
 The main view combines both systems to present a unified daily overview, mixing events and routines relevant to the selected day.
 Sorting by time of day or priority is available in the main view. Sorting by day is presented in the Routines view.
 
-## Screenshot
+## Screenshots
 
-![Screenshot](Screenshots/Simulator Screenshot - iPhone 17 - 2026-05-01 at 13.20.33.png)
-![Screenshot](Screenshots/Simulator Screenshot - iPhone 17 - 2026-05-01 at 13.20.39.png)
+![Screenshot](./Screenshots/Simulator Screenshot - iPhone 17 - 2026-05-01 at 13.20.33.png)
+![Screenshot](./Screenshots/Simulator Screenshot - iPhone 17 - 2026-05-01 at 13.20.39.png)
 
 ## Core Features
 
