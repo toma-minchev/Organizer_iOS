@@ -15,7 +15,6 @@ Sorting by time of day or priority is available in the main view. Sorting by day
 ## Screenshots
 
 ![Screenshot](Screenshots/Simulator Screenshot - iPhone 17 - 2026-05-01 at 13.20.33.png)
-![Screenshot](Screenshots/Simulator Screenshot - iPhone 17 - 2026-05-01 at 13.20.39.png)
 
 ## Core Features
 
